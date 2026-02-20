@@ -1,0 +1,240 @@
+/* History.css — references theme.css variables */
+
+.hist-page {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.hist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.hist-header-text h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.2rem 0;
+}
+
+.hist-header-text p {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.hist-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.75rem;
+  background: var(--green-light);
+  color: var(--green-dark);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── Card ── */
+.hist-card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* ── Filters ── */
+.hist-filters {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.85rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.hist-filter-btn {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: white;
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.hist-filter-btn:hover {
+  border-color: var(--green-light);
+  color: var(--text);
+}
+
+.hist-filter-btn.active {
+  background: var(--green-dark);
+  color: white;
+  border-color: var(--green-dark);
+}
+
+/* ── Table ── */
+.hist-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hist-table thead th {
+  text-align: left;
+  padding: 0.7rem 1.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+  background: #fafbfc;
+}
+
+.hist-table tbody tr {
+  transition: background 0.1s ease;
+}
+
+.hist-table tbody tr:hover {
+  background: #fafdf7;
+}
+
+.hist-table tbody td {
+  padding: 0.8rem 1.2rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.hist-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Date ── */
+.hist-date {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.hist-date-main {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.hist-date-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ── Outcome ── */
+.hist-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.hist-outcome.served    { background: #ecfdf5; color: #065f46; }
+.hist-outcome.left      { background: #fef2f2; color: var(--danger); }
+.hist-outcome.cancelled { background: #f3f4f6; color: var(--text-muted); }
+
+.hist-outcome-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.hist-outcome.served .hist-outcome-dot    { background: #10b981; }
+.hist-outcome.left .hist-outcome-dot      { background: var(--danger); }
+.hist-outcome.cancelled .hist-outcome-dot { background: #9ca3af; }
+
+.hist-svc-name {
+  font-weight: 600;
+}
+
+/* ── Empty ── */
+.hist-empty {
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+
+.hist-empty h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.hist-empty p {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.hist-btn-go {
+  display: inline-block;
+  padding: 0.5rem 1.15rem;
+  background: var(--green-dark);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.hist-btn-go:hover {
+  background: #2a6120;
+}
+
+/* ── No results ── */
+.hist-no-results {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .hist-table thead {
+    display: none;
+  }
+
+  .hist-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    padding: 0.8rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hist-table tbody td {
+    padding: 0.2rem 0;
+    border-bottom: none;
+  }
+
+  .hist-table tbody td::before {
+    content: attr(data-label);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    display: block;
+    margin-bottom: 0.1rem;
+  }
+}

@@ -1,0 +1,350 @@
+/* UserDashboard.css — references theme.css variables */
+
+.ud-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ── Header ── */
+.ud-header {
+  margin-bottom: 1.5rem;
+}
+
+.ud-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.2rem 0;
+}
+
+.ud-subtitle {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+/* ── Stat Cards ── */
+.ud-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 800px) {
+  .ud-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.ud-stat-card {
+  background: white;
+  border-radius: 10px;
+  padding: 1.15rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-top: 3px solid var(--border);
+}
+
+.ud-stat-card.green  { border-top-color: var(--green-dark); }
+.ud-stat-card.amber  { border-top-color: var(--amber); }
+.ud-stat-card.blue   { border-top-color: #3b82f6; }
+.ud-stat-card.muted  { border-top-color: var(--text-muted); }
+
+.ud-stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.4rem;
+}
+
+.ud-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.ud-stat-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* ── Two-column grid ── */
+.ud-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .ud-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Panel ── */
+.ud-panel {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.ud-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ud-panel-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ud-panel-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.ud-panel-body {
+  padding: 0.5rem 1.2rem 1rem;
+}
+
+/* ── Service rows ── */
+.ud-svc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.ud-svc-row:last-child {
+  border-bottom: none;
+}
+
+.ud-svc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.ud-svc-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.ud-svc-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.ud-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ud-status-tag.open {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.ud-status-tag.closed {
+  background: #fef2f2;
+  color: var(--danger);
+}
+
+.ud-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.ud-status-tag.open .ud-status-dot  { background: #10b981; }
+.ud-status-tag.closed .ud-status-dot { background: var(--danger); }
+
+/* ── Queue status panel ── */
+.ud-queue-active {
+  padding: 1.25rem 0 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ud-queue-pos-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ud-queue-pos-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--green-dark);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ud-queue-pos-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.ud-queue-pos-text strong {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.ud-queue-pos-text span {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.ud-queue-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.ud-queue-chip.waiting {
+  background: #fef9c3;
+  color: #92400e;
+}
+
+.ud-queue-chip.almost {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.ud-queue-link {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--green-dark);
+  text-decoration: none;
+}
+
+.ud-queue-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Empty queue ── */
+.ud-queue-empty {
+  padding: 2rem 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.ud-queue-empty p {
+  margin: 0 0 0.75rem;
+}
+
+.ud-btn-sm {
+  display: inline-block;
+  padding: 0.45rem 1.1rem;
+  background: var(--green-dark);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.ud-btn-sm:hover {
+  background: #2a6120;
+}
+
+/* ── Quick nav ── */
+.ud-quick-nav {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.ud-nav-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ud-nav-card:hover {
+  border-color: var(--green-light);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ud-nav-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ud-nav-icon.join   { background: #ecfdf5; color: #065f46; }
+.ud-nav-icon.status { background: #eff6ff; color: #1d4ed8; }
+.ud-nav-icon.hist   { background: #fef9c3; color: #92400e; }
+
+.ud-nav-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.ud-nav-text strong {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ud-nav-text span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .ud-quick-nav {
+    flex-direction: column;
+  }
+}
