@@ -63,4 +63,24 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+.input.error {
+  border: 2px solid #d00;
+}
+
+.error-text {
+  margin-top: 6px;
+  color: #d00;
+  font-size: 0.9rem;
+
 }

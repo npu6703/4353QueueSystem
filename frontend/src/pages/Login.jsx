@@ -1,68 +1,139 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { login, getCurrentUser } from '../services/localApi'
+import { useNavigate } from 'react-router-dom'
+import { login } from '../services/localApi'
+import { validateEmail, validatePassword } from '../utils/validation'
 
 export default function Login() {
+  const nav = useNavigate()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [err, setErr] = useState('')
-  const nav = useNavigate()
 
-  // If already logged in, redirect
-  const existing = getCurrentUser()
-  if (existing) {
-    nav(existing.isAdmin ? '/admin' : '/', { replace: true })
-    return null
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+  })
+
+  const [touched, setTouched] = useState({
+    email: false,
+    password: false,
+  })
+
+  function runValidation(next = { email, password }) {
+    const newErrors = {
+      email: validateEmail(next.email),
+      password: validatePassword(next.password),
+    }
+
+    setErrors(newErrors)
+    return !newErrors.email && !newErrors.password
   }
 
   function submit(e) {
     e.preventDefault()
     setErr('')
-    if (!email || !password) { setErr('Email and password are required'); return }
+    setTouched({ email: true, password: true })
+
+    const ok = runValidation()
+    if (!ok) return
+
     try {
-      const user = login({ email, password })
-      nav(user.isAdmin ? '/admin' : '/')
-    } catch (e) { setErr(e.message) }
+      const user = login({
+        email: email.trim(),
+        password,
+      })
+
+      if (user.isAdmin) {
+        nav('/admin')
+      } else {
+        nav('/')
+      }
+    } catch (e) {
+      setErr(e.message || 'Login failed')
+    }
   }
+
+  const canSubmit =
+    email.trim() &&
+    password &&
+    !errors.email &&
+    !errors.password
 
   return (
     <div className="auth-page">
-      <div className="card auth-card">
+      <div className="auth-card">
         <h2>Login</h2>
-        <p className="auth-subtitle">Sign in to QueueSmart</p>
-        <form onSubmit={submit}>
+        <p>Sign in to your QueueSmart account</p>
+
+        <form onSubmit={submit} noValidate>
           <div className="form-row">
-            <label>Email <span className="required">*</span></label>
+            <label>Email *</label>
             <input
               type="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
+              onChange={(e) => {
+                const v = e.target.value
+                setEmail(v)
+                if (touched.email)
+                  runValidation({ email: v, password })
+              }}
+              onBlur={() => {
+                setTouched((t) => ({ ...t, email: true }))
+                runValidation()
+              }}
+              className={
+                touched.email && errors.email ? 'input error' : 'input'
+              }
+              autoComplete="email"
             />
+            {touched.email && errors.email && (
+              <div className="error-text">{errors.email}</div>
+            )}
           </div>
+
           <div className="form-row">
-            <label>Password <span className="required">*</span></label>
+            <label>Password *</label>
             <input
               type="password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-              minLength={4}
+              onChange={(e) => {
+                const v = e.target.value
+                setPassword(v)
+                if (touched.password)
+                  runValidation({ email, password: v })
+              }}
+              onBlur={() => {
+                setTouched((t) => ({ ...t, password: true }))
+                runValidation()
+              }}
+              className={
+                touched.password && errors.password
+                  ? 'input error'
+                  : 'input'
+              }
+              autoComplete="current-password"
             />
+            {touched.password && errors.password && (
+              <div className="error-text">{errors.password}</div>
+            )}
           </div>
-          {err && <div className="form-error">{err}</div>}
-          <button className="primary" type="submit" style={{ width: '100%' }}>Login</button>
+
+          {err && <div className="error-text">{err}</div>}
+
+          <button
+            className="primary"
+            type="submit"
+            disabled={!canSubmit}
+          >
+            Login
+          </button>
         </form>
-        <p className="auth-switch">
-          Don't have an account? <Link to="/register">Register here</Link>
+
+        <p style={{ marginTop: '1rem' }}>
+          Don't have an account?{' '}
+          <a href="/register">Register here</a>
         </p>
-        <div className="auth-demo-info">
-          <strong>Demo Accounts:</strong>
-          <div>Admin: admin@queue.com / admin123</div>
-          <div>User: user@queue.com / user123</div>
-        </div>
       </div>
     </div>
   )
