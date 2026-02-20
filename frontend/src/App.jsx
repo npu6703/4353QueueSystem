@@ -22,6 +22,12 @@ function RequireAuth({ children, adminOnly }) {
   return children
 }
 
+function RedirectIfLoggedIn({ children }) {
+  const user = getCurrentUser()
+  if (user) return <Navigate to={user.isAdmin ? '/admin' : '/'} replace />
+  return children
+}
+
 export default function App() {
   return (
     <div id="app-root">
@@ -29,8 +35,8 @@ export default function App() {
       <NotificationCenter />
       <main>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<RedirectIfLoggedIn><Login /></RedirectIfLoggedIn>} />
+          <Route path="/register" element={<RedirectIfLoggedIn><Register /></RedirectIfLoggedIn>} />
 
           <Route
             path="/"
