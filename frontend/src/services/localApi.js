@@ -29,7 +29,9 @@ function ensureDefaults() {
     ])
   }
   if (!read(STORAGE_KEYS.QUEUES, null)) write(STORAGE_KEYS.QUEUES, {})
-  if (!read(STORAGE_KEYS.USERS, null)) write(STORAGE_KEYS.USERS, [])
+  if (!read(STORAGE_KEYS.USERS, null)) write(STORAGE_KEYS.USERS, [
+    { id: 'admin1', email: 'admin@queue.com', password: 'admin123', name: 'Admin', isAdmin: true }
+  ])
   if (!read(STORAGE_KEYS.HISTORY, null)) write(STORAGE_KEYS.HISTORY, [])
   if (!read(STORAGE_KEYS.NOTIFS, null)) write(STORAGE_KEYS.NOTIFS, [])
 }
@@ -59,7 +61,9 @@ export function logout() {
 }
 
 export function getCurrentUser() {
-  return read(STORAGE_KEYS.CURRENT, null)
+  // Static user for UI testing — remove this and uncomment below for real auth
+  return { id: 'admin1', email: 'admin@queue.com', name: 'Admin', isAdmin: true }
+  // return read(STORAGE_KEYS.CURRENT, null)
 }
 
 export function getServices() {
