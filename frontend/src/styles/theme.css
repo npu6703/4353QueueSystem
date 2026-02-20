@@ -278,6 +278,8 @@ input, select, textarea {
   font-family: inherit;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   background: white;
+  color: #213547;
+  color-scheme: light;
 }
 
 input:focus, select:focus, textarea:focus {
@@ -301,4 +303,191 @@ button.primary {
 
 button.primary:hover {
   background: #2a6120;
+}
+
+/* ==================== Auth Pages ==================== */
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: calc(100vh - 80px);
+  padding-top: 3rem;
+}
+
+.auth-card {
+  max-width: 420px;
+  width: 100%;
+}
+
+.auth-card h2 {
+  margin: 0 0 0.25rem 0;
+  color: var(--green-dark);
+  font-size: 1.5rem;
+}
+
+.auth-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0 0 1.25rem 0;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.auth-switch a {
+  color: var(--green-dark);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+.auth-demo-info {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: #f0fdf4;
+  border: 1px solid var(--green-light);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.auth-demo-info strong {
+  color: var(--text);
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+/* ==================== Form Helpers ==================== */
+.required {
+  color: var(--danger);
+}
+
+.form-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.field-hint {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-top: 0.15rem;
+}
+
+/* ==================== Role Badge (Navbar) ==================== */
+.nav-role-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+
+/* ==================== Service Management Form ==================== */
+.svc-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.svc-form-row-inline {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+.svc-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.svc-action-btns {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.svc-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+}
+
+.svc-toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+}
+
+.svc-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.svc-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #d1d5db;
+  border-radius: 22px;
+  transition: background 0.2s ease;
+}
+
+.svc-toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.svc-toggle input:checked + .svc-toggle-slider {
+  background: var(--green-dark);
+}
+
+.svc-toggle input:checked + .svc-toggle-slider::before {
+  transform: translateX(18px);
+}
+
+.svc-toggle-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.svc-toggle-label.open { color: var(--green-dark); }
+.svc-toggle-label.closed { color: var(--danger); }
+
+@media (max-width: 768px) {
+  .svc-form-row-inline {
+    grid-template-columns: 1fr;
+  }
 }

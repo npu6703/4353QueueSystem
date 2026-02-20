@@ -43,19 +43,30 @@ export default function Navbar() {
 
   return (
     <nav className="nav">
-      <Link to="/" className="brand">Restaurant Queue</Link>
+      <Link to={user ? (user.isAdmin ? '/admin' : '/') : '/login'} className="brand">QueueSmart</Link>
       <div className="nav-right">
         {user ? (
           <>
             <div className="nav-links">
-              <Link to="/" className={isActive('/') ? 'nav-link active' : 'nav-link'}>Dashboard</Link>
-              <Link to="/join" className={isActive('/join') ? 'nav-link active' : 'nav-link'}>Join Queue</Link>
-              <Link to="/status" className={isActive('/status') ? 'nav-link active' : 'nav-link'}>My Status</Link>
-              <Link to="/history" className={isActive('/history') ? 'nav-link active' : 'nav-link'}>History</Link>
-              {user.isAdmin && <Link to="/admin" className={isActive('/admin') ? 'nav-link active' : 'nav-link'}>Admin</Link>}
+              {user.isAdmin ? (
+                <>
+                  <Link to="/admin" className={isActive('/admin') && !location.pathname.includes('/services') && !location.pathname.includes('/queues') ? 'nav-link active' : 'nav-link'}>Dashboard</Link>
+                  <Link to="/admin/services" className={location.pathname === '/admin/services' ? 'nav-link active' : 'nav-link'}>Services</Link>
+                  <Link to="/admin/queues" className={location.pathname === '/admin/queues' ? 'nav-link active' : 'nav-link'}>Queues</Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/" className={isActive('/') ? 'nav-link active' : 'nav-link'}>Dashboard</Link>
+                  <Link to="/join" className={isActive('/join') ? 'nav-link active' : 'nav-link'}>Join Queue</Link>
+                  <Link to="/status" className={isActive('/status') ? 'nav-link active' : 'nav-link'}>My Status</Link>
+                  <Link to="/history" className={isActive('/history') ? 'nav-link active' : 'nav-link'}>History</Link>
+                </>
+              )}
             </div>
 
             <div className="nav-actions">
+              <span className="nav-role-badge">{user.isAdmin ? 'Admin' : 'User'}</span>
+
               {/* Bell icon */}
               <div className="notif-wrapper" ref={dropdownRef}>
                 <button className="notif-bell" onClick={() => setShowNotifs(!showNotifs)} title="Notifications">
