@@ -54,10 +54,19 @@ ensureDefaults()
 
 // ===== Auth =====
 
-export function register({ email, password, name, isAdmin=false }) {
+export function register({ email, password, name, phone = '', isAdmin = false }) {
   const users = read(STORAGE_KEYS.USERS, [])
-  if (users.find(u => u.email === email)) throw new Error('Email exists')
-  const user = { id: 'u' + Date.now(), email, password, name, isAdmin }
+  if (users.find((u) => u.email === email)) throw new Error('Email already exists')
+
+  const user = {
+    id: 'u' + Date.now(),
+    email,
+    password,
+    name,
+    phone: phone || '',
+    isAdmin,
+  }
+
   users.push(user)
   write(STORAGE_KEYS.USERS, users)
   write(STORAGE_KEYS.CURRENT, user)
