@@ -1,27 +1,44 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getServices, getQueueForService, saveService } from '../services/localApi'
+import { getServices, getSortedQueue, saveService, getAllHistory, getCurrentUser } from '../services/localApi'
 import '../styles/AdminDashboard.css'
 
-export default function AdminDashboard(){
+export default function AdminDashboard() {
   const [services, setServices] = useState(getServices())
+  const [, setTick] = useState(0)
+  const user = getCurrentUser()
+  const history = getAllHistory()
 
-  function toggleOpen(svc){
-    const updated = { ...svc, open: !svc.open }
-    saveService(updated)
+  // Auto-refresh every 10s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setServices(getServices())
+      setTick(t => t + 1)
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [])
+
+  function toggleOpen(svc) {
+    saveService({ ...svc, open: !svc.open })
     setServices(getServices())
   }
 
-  const totalInQueue = services.reduce((sum, s) => sum + getQueueForService(s.id).length, 0)
+  const totalInQueue = services.reduce((sum, s) => sum + getSortedQueue(s.id).length, 0)
   const openCount = services.filter(s => s.open).length
   const closedCount = services.length - openCount
+  const todayServed = history.filter(h => {
+    const d = new Date(h.date)
+    const now = new Date()
+    return d.toDateString() === now.toDateString()
+  }).length
 
   return (
     <div className="admin-dashboard">
+      {/* Header */}
       <div className="admin-header">
         <div>
           <h2>Admin Dashboard</h2>
-          <p className="admin-subtitle">Manage your restaurant queue system</p>
+          <p className="admin-subtitle">Welcome back, {user?.name || 'Admin'}. Here's your queue overview.</p>
         </div>
         <div className="admin-nav-buttons">
           <Link to="/admin/services"><button className="admin-btn admin-btn-outline">Manage Services</button></Link>
@@ -29,6 +46,7 @@ export default function AdminDashboard(){
         </div>
       </div>
 
+      {/* Stats row */}
       <div className="admin-stats">
         <div className="stat-card">
           <span className="stat-number">{services.length}</span>
@@ -48,6 +66,42 @@ export default function AdminDashboard(){
         </div>
       </div>
 
+      {/* Quick glance: active queues */}
+      {totalInQueue > 0 && (
+        <div className="admin-active-queues">
+          <h3 className="admin-section-title">Active Queues</h3>
+          <div className="admin-queue-cards">
+            {services.filter(s => getSortedQueue(s.id).length > 0).map(s => {
+              const q = getSortedQueue(s.id)
+              const nextUser = q[0]
+              return (
+                <div key={s.id} className="admin-queue-card">
+                  <div className="admin-queue-card-header">
+                    <span className="admin-queue-card-name">{s.name}</span>
+                    <span className="queue-badge">{q.length}</span>
+                  </div>
+                  <div className="admin-queue-card-next">
+                    Next: <strong>{nextUser.userName}</strong>
+                    <span className={`priority-badge priority-${nextUser.priority}`} style={{ marginLeft: '0.4rem' }}>
+                      {nextUser.priority}
+                    </span>
+                  </div>
+                  <div className="admin-queue-card-wait">
+                    ~{q.length * (s.expected || 10)} min total wait
+                  </div>
+                  <Link to="/admin/queues">
+                    <button className="admin-btn admin-btn-outline" style={{ marginTop: '0.5rem', width: '100%' }}>
+                      Manage
+                    </button>
+                  </Link>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Services table */}
       <div className="admin-table-wrapper">
         <h3 className="admin-table-title">Services Overview</h3>
         <table className="admin-table">
@@ -64,20 +118,16 @@ export default function AdminDashboard(){
           </thead>
           <tbody>
             {services.map(s => {
-              const queueLen = getQueueForService(s.id).length
+              const queueLen = getSortedQueue(s.id).length
               const estWait = queueLen * (s.expected || 10)
               return (
                 <tr key={s.id}>
                   <td className="service-name">{s.name}</td>
                   <td className="service-desc">{s.description}</td>
-                  <td>
-                    <span className="queue-badge">{queueLen}</span>
-                  </td>
+                  <td><span className="queue-badge">{queueLen}</span></td>
                   <td>{estWait > 0 ? `${estWait} min` : '—'}</td>
                   <td>
-                    <span className={`priority-badge priority-${s.priority}`}>
-                      {s.priority}
-                    </span>
+                    <span className={`priority-badge priority-${s.priority}`}>{s.priority}</span>
                   </td>
                   <td>
                     <span className={`status-badge ${s.open ? 'status-open' : 'status-closed'}`}>
@@ -98,6 +148,39 @@ export default function AdminDashboard(){
           </tbody>
         </table>
       </div>
+
+      {/* Recent activity */}
+      {history.length > 0 && (
+        <div className="admin-table-wrapper" style={{ marginTop: '1.5rem' }}>
+          <h3 className="admin-table-title">Recent Activity ({todayServed} served today)</h3>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Person</th>
+                <th>Service</th>
+                <th>Priority</th>
+                <th>Outcome</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...history].reverse().slice(0, 10).map(h => (
+                <tr key={h.id}>
+                  <td>{new Date(h.date).toLocaleString()}</td>
+                  <td className="service-name">{h.userName || h.userId}</td>
+                  <td>{h.serviceName || h.serviceId}</td>
+                  <td>
+                    {h.priority ? (
+                      <span className={`priority-badge priority-${h.priority}`}>{h.priority}</span>
+                    ) : '—'}
+                  </td>
+                  <td><span className="status-badge status-open">{h.outcome}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

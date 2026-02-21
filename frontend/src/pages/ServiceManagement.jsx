@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getServices, saveService } from '../services/localApi'
+import { getServices, saveService, deleteService } from '../services/localApi'
 import {
   validateRequired,
   validateMaxLen,
@@ -99,22 +99,41 @@ export default function ServiceManagement() {
 
   return (
     <div className="card">
-      <h2>Service Management</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <h2 style={{ margin: 0 }}>Service Management</h2>
+        <button className="primary" onClick={startCreate}>+ New Service</button>
+      </div>
 
-      <button className="primary" onClick={startCreate}>
-        Create Service
-      </button>
-
-      <ul style={{ marginTop: 20 }}>
-        {services.map((s) => (
-          <li key={s.id}>
-            {s.name} —{' '}
-            <button onClick={() => edit(s)}>
-              Edit
-            </button>
-          </li>
-        ))}
-      </ul>
+      <table className="sm-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Duration</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th style={{ textAlign: 'right' }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {services.length === 0 && (
+            <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No services yet. Create one above.</td></tr>
+          )}
+          {services.map(s => (
+            <tr key={s.id}>
+              <td><strong>{s.name}</strong></td>
+              <td style={{ color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.description}</td>
+              <td>{s.expected} min</td>
+              <td><span className={`sm-priority sm-priority-${s.priority}`}>{s.priority}</span></td>
+              <td><span className={`sm-status ${s.open ? 'sm-open' : 'sm-closed'}`}>{s.open ? 'Open' : 'Closed'}</span></td>
+              <td style={{ textAlign: 'right' }}>
+                <button className="sm-btn sm-btn-edit" onClick={() => edit(s)}>Edit</button>
+                <button className="sm-btn sm-btn-delete" onClick={() => { deleteService(s.id); setServices(getServices()) }}>Delete</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       {editing && (
         <div style={{ marginTop: 20 }}>

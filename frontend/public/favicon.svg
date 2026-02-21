@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Ticket body -->
+  <rect x="8" y="4" width="48" height="56" rx="6" fill="#347928"/>
+  <!-- Ticket notch (left) -->
+  <circle cx="8" cy="20" r="5" fill="white"/>
+  <!-- Ticket notch (right) -->
+  <circle cx="56" cy="20" r="5" fill="white"/>
+  <!-- Dashed tear line -->
+  <line x1="14" y1="20" x2="50" y2="20" stroke="white" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/>
+  <!-- Number symbol -->
+  <text x="32" y="16" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="white" opacity="0.8">#</text>
+  <!-- Big number 1 -->
+  <text x="32" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="800" fill="white">1</text>
+</svg>

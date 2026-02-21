@@ -1,9 +1,26 @@
-/* Admin Dashboard Styles — Fluid & Responsive */
+/* Admin Dashboard Styles — Modern & Polished */
 
 .admin-dashboard {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
+}
+
+/* ==================== Staggered Entrance Animations ==================== */
+@keyframes statCardIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+@keyframes tableSlideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes counterPop {
+  0%   { transform: scale(0.8); opacity: 0; }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* Header */
@@ -20,6 +37,7 @@
   margin: 0;
   font-size: clamp(1.3rem, 2vw, 1.8rem);
   color: var(--green-dark);
+  letter-spacing: -0.02em;
 }
 
 .admin-subtitle {
@@ -34,35 +52,53 @@
   flex-wrap: wrap;
 }
 
-/* Buttons */
+/* ==================== Buttons ==================== */
 .admin-btn {
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: clamp(0.75rem, 0.9vw, 0.88rem);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   border: none;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255,255,255,0.2), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.admin-btn:hover::after {
+  opacity: 1;
 }
 
 .admin-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
 .admin-btn:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .admin-btn-primary {
-  background: var(--green-dark);
+  background: linear-gradient(135deg, var(--green-dark), #2a6120);
   color: white;
+  box-shadow: 0 2px 6px rgba(52, 121, 40, 0.2);
 }
 
 .admin-btn-primary:hover {
-  background: #2a6120;
+  background: linear-gradient(135deg, #2a6120, #1f4d18);
+  box-shadow: 0 6px 20px rgba(52, 121, 40, 0.3);
 }
 
 .admin-btn-outline {
@@ -72,7 +108,8 @@
 }
 
 .admin-btn-outline:hover {
-  background: var(--green-light);
+  background: #f0fdf4;
+  border-color: #2a6120;
 }
 
 .admin-btn-danger {
@@ -85,6 +122,7 @@
 .admin-btn-danger:hover {
   background: #fee2e2;
   border-color: #f87171;
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.12);
 }
 
 .admin-btn-success {
@@ -97,9 +135,10 @@
 .admin-btn-success:hover {
   background: #dcfce7;
   border-color: var(--green-dark);
+  box-shadow: 0 4px 12px rgba(52, 121, 40, 0.12);
 }
 
-/* Stat Cards */
+/* ==================== Stat Cards ==================== */
 .admin-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -109,30 +148,57 @@
 
 .stat-card {
   background: white;
-  border-radius: 10px;
-  padding: clamp(0.8rem, 1.5vw, 1.5rem) clamp(0.5rem, 1vw, 1rem);
+  border-radius: var(--radius);
+  padding: clamp(1rem, 1.5vw, 1.5rem) clamp(0.5rem, 1vw, 1rem);
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   border-top: 3px solid var(--green-light);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: statCardIn 0.4s ease-out both;
+  position: relative;
+  overflow: hidden;
 }
 
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(52,121,40,0.02) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.stat-card:nth-child(1) { animation-delay: 0.05s; }
+.stat-card:nth-child(2) { animation-delay: 0.1s; }
+.stat-card:nth-child(3) { animation-delay: 0.15s; }
+.stat-card:nth-child(4) { animation-delay: 0.2s; }
+
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(0, 0, 0, 0.06);
 }
 
 .stat-card-green { border-top-color: var(--green-dark); }
+.stat-card-green::before { background: linear-gradient(180deg, rgba(52,121,40,0.04) 0%, transparent 50%); }
 .stat-card-red { border-top-color: #ef4444; }
+.stat-card-red::before { background: linear-gradient(180deg, rgba(239,68,68,0.03) 0%, transparent 50%); }
 .stat-card-amber { border-top-color: var(--amber, #FCCD2A); }
+.stat-card-amber::before { background: linear-gradient(180deg, rgba(252,205,42,0.04) 0%, transparent 50%); }
 
 .stat-number {
-  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
-  font-weight: 700;
+  font-size: clamp(1.6rem, 2.5vw, 2.5rem);
+  font-weight: 800;
   color: var(--text);
   line-height: 1;
+  animation: counterPop 0.5s ease-out both;
+  animation-delay: 0.3s;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-label {
@@ -140,24 +206,33 @@
   color: #6b7280;
   margin-top: 0.4rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 500;
+  letter-spacing: 0.05em;
+  font-weight: 600;
 }
 
-/* Table */
+/* ==================== Table ==================== */
 .admin-table-wrapper {
   background: white;
-  border-radius: 10px;
+  border-radius: var(--radius);
   padding: clamp(1rem, 1.5vw, 1.5rem);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   overflow-x: auto;
+  animation: tableSlideIn 0.4s ease-out both;
+  animation-delay: 0.25s;
+  transition: box-shadow 0.3s ease;
+}
+
+.admin-table-wrapper:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .admin-table-title {
   margin: 0 0 1rem 0;
   font-size: clamp(0.95rem, 1.1vw, 1.1rem);
   color: var(--text);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .admin-table {
@@ -175,7 +250,7 @@
   padding: clamp(0.4rem, 0.8vw, 0.7rem) clamp(0.5rem, 0.8vw, 0.75rem);
   font-size: clamp(0.65rem, 0.75vw, 0.78rem);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: #6b7280;
   font-weight: 600;
   white-space: nowrap;
@@ -188,11 +263,12 @@
 }
 
 .admin-table tbody tr {
-  transition: background 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .admin-table tbody tr:hover {
   background: #fafdf7;
+  box-shadow: inset 3px 0 0 var(--green-dark);
 }
 
 .admin-table tbody tr:last-child td {
@@ -207,6 +283,10 @@
 .service-desc {
   color: #6b7280;
   font-size: clamp(0.75rem, 0.9vw, 0.88rem);
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Badges */
@@ -214,13 +294,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--green-light);
+  background: linear-gradient(135deg, var(--green-light), #a8e090);
   color: var(--green-dark);
   font-weight: 700;
   font-size: clamp(0.75rem, 0.9vw, 0.88rem);
   width: clamp(1.6rem, 2vw, 2.1rem);
   height: clamp(1.6rem, 2vw, 2.1rem);
   border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(52, 121, 40, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.queue-badge:hover {
+  transform: scale(1.1);
 }
 
 .status-badge {
@@ -230,6 +316,7 @@
   font-size: clamp(0.7rem, 0.8vw, 0.8rem);
   font-weight: 600;
   white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
 .status-open { background: #dcfce7; color: #166534; }
@@ -243,13 +330,90 @@
   font-weight: 600;
   text-transform: capitalize;
   white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
 .priority-low { background: #f0fdf4; color: #15803d; }
 .priority-medium { background: #fefce8; color: #a16207; }
 .priority-high { background: #fef2f2; color: #b91c1c; }
 
-/* Responsive Breakpoints */
+/* ==================== Active Queue Cards ==================== */
+.admin-section-title {
+  font-size: clamp(0.95rem, 1.1vw, 1.1rem);
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.75rem 0;
+  letter-spacing: -0.01em;
+}
+
+.admin-active-queues {
+  margin-bottom: 1.5rem;
+  animation: tableSlideIn 0.4s ease-out both;
+  animation-delay: 0.15s;
+}
+
+.admin-queue-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.admin-queue-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 1.15rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-left: 4px solid var(--green-dark);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-queue-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(circle, rgba(52,121,40,0.05) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(20px, -20px);
+  pointer-events: none;
+}
+
+.admin-queue-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-left-color: #2a6120;
+}
+
+.admin-queue-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.admin-queue-card-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.admin-queue-card-next {
+  font-size: 0.85rem;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.admin-queue-card-wait {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ==================== Responsive Breakpoints ==================== */
 @media (max-width: 768px) {
   .admin-header {
     flex-direction: column;
