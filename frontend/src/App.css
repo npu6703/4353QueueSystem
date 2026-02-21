@@ -49,3 +49,28 @@ button:focus-visible {
   outline: 2px solid rgba(52, 121, 40, 0.4);
   outline-offset: 2px;
 }
+
+.error-text {
+  color: #d32f2f;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.input {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 10px;
+  width: 100%;
+
+  transition: none;
+}
+
+.input.error {
+  border: 2px solid #d32f2f;
+}
+
+.input.error:focus {
+  border: 2px solid #d32f2f;
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.15);
+  outline: none;
+}
