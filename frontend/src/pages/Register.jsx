@@ -14,7 +14,7 @@ export default function Register() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState('user')
+  const [err, setErr] = useState('')
 
   const [errors, setErrors] = useState({
     name: '',
@@ -28,19 +28,16 @@ export default function Register() {
     password: false,
   })
 
-  const [err, setErr] = useState('')
-
   function runValidation(next = { name, email, password }) {
     const newErrors = {
       name:
-        validateRequired(next.name, 'Name') ||
-        validateMaxLen(next.name, 100, 'Name'),
+        validateMaxLen(next.name, 100, 'Name') ||
+        validateRequired(next.name, 'Name'),
       email: validateEmail(next.email),
       password: validatePassword(next.password),
     }
 
     setErrors(newErrors)
-
     return !newErrors.name && !newErrors.email && !newErrors.password
   }
 
@@ -57,15 +54,8 @@ export default function Register() {
         name: name.trim(),
         email: email.trim(),
         password,
-        role,
       })
-
-      // redirect theo role
-      if (role === 'admin') {
-        nav('/admin')
-      } else {
-        nav('/')
-      }
+      nav('/login')
     } catch (e) {
       setErr(e.message || 'Register failed')
     }
@@ -86,8 +76,6 @@ export default function Register() {
         <p>Create your QueueSmart account</p>
 
         <form onSubmit={submit} noValidate>
-
-          {/* Name */}
           <div className="form-row">
             <label>Name *</label>
             <input
@@ -95,23 +83,20 @@ export default function Register() {
               onChange={(e) => {
                 const v = e.target.value
                 setName(v)
-                if (touched.name)
-                  runValidation({ name: v, email, password })
+                if (touched.name) runValidation({ name: v, email, password })
               }}
               onBlur={() => {
                 setTouched((t) => ({ ...t, name: true }))
                 runValidation()
               }}
-              className={
-                touched.name && errors.name ? 'input error' : 'input'
-              }
+              className={touched.name && errors.name ? 'input error' : 'input'}
+              autoComplete="name"
             />
             {touched.name && errors.name && (
               <div className="error-text">{errors.name}</div>
             )}
           </div>
 
-          {/* Email */}
           <div className="form-row">
             <label>Email *</label>
             <input
@@ -120,16 +105,13 @@ export default function Register() {
               onChange={(e) => {
                 const v = e.target.value
                 setEmail(v)
-                if (touched.email)
-                  runValidation({ name, email: v, password })
+                if (touched.email) runValidation({ name, email: v, password })
               }}
               onBlur={() => {
                 setTouched((t) => ({ ...t, email: true }))
                 runValidation()
               }}
-              className={
-                touched.email && errors.email ? 'input error' : 'input'
-              }
+              className={touched.email && errors.email ? 'input error' : 'input'}
               autoComplete="email"
             />
             {touched.email && errors.email && (
@@ -137,7 +119,6 @@ export default function Register() {
             )}
           </div>
 
-          {/* Password */}
           <div className="form-row">
             <label>Password *</label>
             <input
@@ -146,17 +127,14 @@ export default function Register() {
               onChange={(e) => {
                 const v = e.target.value
                 setPassword(v)
-                if (touched.password)
-                  runValidation({ name, email, password: v })
+                if (touched.password) runValidation({ name, email, password: v })
               }}
               onBlur={() => {
                 setTouched((t) => ({ ...t, password: true }))
                 runValidation()
               }}
               className={
-                touched.password && errors.password
-                  ? 'input error'
-                  : 'input'
+                touched.password && errors.password ? 'input error' : 'input'
               }
               autoComplete="new-password"
             />
@@ -165,33 +143,15 @@ export default function Register() {
             )}
           </div>
 
-          {/* Role */}
-          <div className="form-row">
-            <label>Role *</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="input"
-            >
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-
           {err && <div className="error-text">{err}</div>}
 
-          <button
-            className="primary"
-            type="submit"
-            disabled={!canSubmit}
-          >
+          <button className="primary" type="submit" disabled={!canSubmit}>
             Register
           </button>
         </form>
 
         <p style={{ marginTop: '1rem' }}>
-          Already have an account?{' '}
-          <a href="/login">Login here</a>
+          Already have an account? <a href="/login">Login here</a>
         </p>
       </div>
     </div>
