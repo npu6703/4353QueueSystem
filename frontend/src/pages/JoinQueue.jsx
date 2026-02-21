@@ -1,142 +1,136 @@
 import { useState, useEffect } from 'react'
-import { getServices, joinQueue, leaveQueue, getCurrentUser, getSortedQueue, getUserQueueStatus } from '../services/localApi'
+import { getServices, joinQueue, leaveQueue, getCurrentUser, getQueueForService, getUserQueueStatus } from '../services/localApi'
+import '../styles/JoinQueue.css'
 
 export default function JoinQueue() {
   const [services, setServices] = useState([])
-  const [selectedSvc, setSelectedSvc] = useState('')
-  const [priority, setPriority] = useState('')
-  const [message, setMessage] = useState(null)
-  const [, setTick] = useState(0) // force re-render for live updates
+  const [selected, setSelected] = useState('')
+  const [toast, setToast] = useState(null)
   const user = getCurrentUser()
 
   useEffect(() => { setServices(getServices()) }, [])
 
-  // Refresh every 15s to update scores and positions
-  useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 15000)
-    return () => clearInterval(interval)
-  }, [])
-
-  // Set default priority to the service's priority when selection changes
-  useEffect(() => {
-    if (selectedSvc) {
-      const svc = services.find(s => s.id === selectedSvc)
-      if (svc) setPriority(svc.priority)
-    }
-  }, [selectedSvc, services])
-
   const currentStatus = user ? getUserQueueStatus(user.id) : null
-  const alreadyInQueue = currentStatus !== null
 
-  function handleJoin() {
-    if (!selectedSvc) { setMessage({ type: 'error', text: 'Please select a service' }); return }
-    const svc = services.find(s => s.id === selectedSvc)
-    if (!svc?.open) { setMessage({ type: 'error', text: 'This service is currently closed' }); return }
-    if (alreadyInQueue) { setMessage({ type: 'error', text: 'You are already in a queue. Leave your current queue first.' }); return }
-    joinQueue(selectedSvc, user.id, priority)
-    setMessage({ type: 'success', text: `Joined ${svc.name} queue with ${priority} priority!` })
-  }
-
-  function handleLeave() {
-    if (!currentStatus) { setMessage({ type: 'error', text: 'You are not in any queue' }); return }
-    leaveQueue(currentStatus.serviceId, user.id)
-    setMessage({ type: 'success', text: 'You left the queue' })
+  function refresh() {
+    setServices(getServices())
   }
 
   function getQueueInfo(serviceId) {
-    const sorted = getSortedQueue(serviceId)
+    const q = getQueueForService(serviceId)
     const svc = services.find(s => s.id === serviceId)
-    return {
-      length: sorted.length,
-      estWait: sorted.length * (svc?.expected || 10)
-    }
+    const userPos = user ? q.indexOf(user.id) : -1
+    const waitMinutes = q.length * (svc?.expected || 10)
+    return { length: q.length, userPos, waitMinutes }
   }
 
+  function showToast(message, type = 'success') {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  function handleJoin() {
+    if (!selected) return showToast('Select a service first.', 'error')
+    const svc = services.find(s => s.id === selected)
+    if (svc && !svc.open) return showToast('This service is currently closed.', 'error')
+    if (currentStatus) return showToast('You are already in a queue. Leave first.', 'error')
+    joinQueue(selected, user.id)
+    showToast(`Joined ${svc?.name || selected} queue.`)
+    refresh()
+  }
+
+  function handleLeave() {
+    if (!selected) return showToast('Select a service first.', 'error')
+    const svc = services.find(s => s.id === selected)
+    leaveQueue(selected, user.id)
+    showToast(`Left ${svc?.name || selected} queue.`)
+    refresh()
+  }
+
+  const selectedInfo = selected ? getQueueInfo(selected) : null
+  const selectedService = selected ? services.find(s => s.id === selected) : null
+
   return (
-    <div className="card">
-      <h2>Join Queue</h2>
+    <div className="jq-page">
+      <div className="jq-header">
+        <h2>Join a Queue</h2>
+        <p>Select a service to view wait times and join.</p>
+      </div>
 
-      {/* Current status banner */}
-      {alreadyInQueue && (
-        <div className="queue-status-banner">
-          <div className="queue-status-banner-text">
-            You are in <strong>{currentStatus.serviceName}</strong> — Position #{currentStatus.position} of {currentStatus.total}
-            <span className={`priority-badge priority-${currentStatus.priority}`} style={{ marginLeft: '0.5rem' }}>
-              {currentStatus.priority}
-            </span>
-          </div>
-          <button className="admin-btn admin-btn-danger" onClick={handleLeave}>Leave Queue</button>
+      {/* Banner if already in queue */}
+      {currentStatus && (
+        <div className="jq-banner">
+          <span>You are currently <strong>#{currentStatus.position}</strong> in the <strong>{services.find(s => s.id === currentStatus.serviceId)?.name || currentStatus.serviceId}</strong> queue.</span>
         </div>
       )}
 
-      {message && (
-        <div className={message.type === 'error' ? 'form-error' : 'form-success'}>
-          {message.text}
-        </div>
-      )}
-
-      {!alreadyInQueue && (
-        <>
-          <div className="form-row">
-            <label>Select Service <span className="required">*</span></label>
-            <select value={selectedSvc} onChange={e => setSelectedSvc(e.target.value)}>
-              <option value="">-- Choose a service --</option>
-              {services.filter(s => s.open).map(s => {
-                const info = getQueueInfo(s.id)
-                return (
-                  <option key={s.id} value={s.id}>
-                    {s.name} — {info.length} in queue (~{info.estWait} min wait)
-                  </option>
-                )
-              })}
-            </select>
-          </div>
-
-          {selectedSvc && (
-            <>
-              <div className="form-row">
-                <label>Priority Level</label>
-                <select value={priority} onChange={e => setPriority(e.target.value)}>
-                  <option value="low">Low — Standard queue</option>
-                  <option value="medium">Medium — Somewhat urgent</option>
-                  <option value="high">High — Urgent / Emergency</option>
-                </select>
-                <span className="field-hint">
-                  Higher priority gives you a head start in the queue. Score: {priority === 'high' ? '30' : priority === 'medium' ? '15' : '0'} base + 1pt/min waiting.
-                </span>
+      {/* Service cards */}
+      <div className="jq-grid">
+        {services.map(s => {
+          const info = getQueueInfo(s.id)
+          const isDisabled = !s.open
+          return (
+            <div
+              key={s.id}
+              className={`jq-card ${selected === s.id ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+              onClick={() => !isDisabled && setSelected(s.id)}
+            >
+              <div className="jq-radio"></div>
+              <div className="jq-card-top">
+                <h4 className="jq-card-name">{s.name}</h4>
               </div>
+              <p className="jq-card-desc">{s.description}</p>
+              <div className="jq-card-meta">
+                <span className={`jq-status-tag ${s.open ? 'open' : 'closed'}`}>
+                  <span className="jq-status-dot"></span>
+                  {s.open ? 'Open' : 'Closed'}
+                </span>
+                <span className="jq-meta-item"><strong>{s.expected}</strong> min avg</span>
+                <span className="jq-meta-item"><strong>{info.length}</strong> in queue</span>
+                <span className={`jq-priority-tag ${s.priority}`}>{s.priority}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
-              {/* Service info card */}
-              {(() => {
-                const svc = services.find(s => s.id === selectedSvc)
-                const info = getQueueInfo(selectedSvc)
-                return svc ? (
-                  <div className="queue-service-info">
-                    <div className="queue-service-info-row">
-                      <span>Service:</span> <strong>{svc.name}</strong>
-                    </div>
-                    <div className="queue-service-info-row">
-                      <span>Description:</span> {svc.description}
-                    </div>
-                    <div className="queue-service-info-row">
-                      <span>Expected duration:</span> {svc.expected} min per person
-                    </div>
-                    <div className="queue-service-info-row">
-                      <span>People in queue:</span> {info.length}
-                    </div>
-                    <div className="queue-service-info-row">
-                      <span>Estimated wait:</span> ~{info.estWait} min
-                    </div>
-                  </div>
-                ) : null
-              })()}
-
-              <button className="primary" onClick={handleJoin} style={{ marginTop: '1rem' }}>
-                Join Queue
-              </button>
+      {/* Action panel */}
+      <div className="jq-action-panel">
+        <div className="jq-action-head">
+          <h3>{selectedService ? selectedService.name : 'Queue Details'}</h3>
+        </div>
+        <div className="jq-action-body">
+          {selected && selectedInfo ? (
+            <>
+              <div className="jq-wait-box">
+                <div className="jq-wait-number">
+                  <strong>{selectedInfo.waitMinutes}</strong>
+                  <span>min</span>
+                </div>
+                <div className="jq-wait-details">
+                  <span className="jq-wait-title">Estimated Wait</span>
+                  <span className="jq-wait-value">{selectedInfo.waitMinutes} minutes</span>
+                  <span className="jq-wait-sub">{selectedInfo.length} {selectedInfo.length === 1 ? 'person' : 'people'} in queue</span>
+                </div>
+              </div>
+              <div className="jq-btns">
+                <button className="jq-btn-primary" onClick={handleJoin} disabled={!selectedService?.open || !!currentStatus}>
+                  {currentStatus ? 'Already in Queue' : 'Join Queue'}
+                </button>
+                {selectedInfo.userPos >= 0 && (
+                  <button className="jq-btn-danger" onClick={handleLeave}>Leave Queue</button>
+                )}
+              </div>
             </>
+          ) : (
+            <div className="jq-placeholder">Select a service above to view details.</div>
           )}
-        </>
+        </div>
+      </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className={`jq-toast ${toast.type}`}>{toast.message}</div>
       )}
     </div>
   )
