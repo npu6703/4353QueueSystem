@@ -3,6 +3,7 @@ const cors = require('cors');
 
 const queueRoutes = require('./routes/queue');
 const adminRoutes = require('./routes/admin');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
@@ -11,9 +12,9 @@ app.use(express.json());
 
 app.use(queueRoutes);
 app.use(adminRoutes);
+app.use(authRoutes);
 
 // Auth and service routes will be added by teammates
-// app.use(authRoutes);
 // app.use(serviceRoutes);
 
 const PORT = process.env.PORT || 3001;
