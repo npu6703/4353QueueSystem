@@ -1,27 +1,35 @@
 import { useState, useEffect } from 'react'
-import { getServices, joinQueue, leaveQueue, getCurrentUser, getQueueForService, getUserQueueStatus } from '../services/localApi'
+import { getServices, getCurrentUser, getQueueForService } from '../services/localApi'
+import { joinQueue, leaveQueue, getQueueStatus } from '../services/userApi'
 import '../styles/JoinQueue.css'
 
 export default function JoinQueue() {
   const [services, setServices] = useState([])
   const [selected, setSelected] = useState('')
+  const [currentStatus, setCurrentStatus] = useState(null)
   const [toast, setToast] = useState(null)
   const user = getCurrentUser()
 
-  useEffect(() => { setServices(getServices()) }, [])
+  useEffect(() => {
+    setServices(getServices())
+    if (user) {
+      getQueueStatus(user.id).then(setCurrentStatus).catch(() => setCurrentStatus(null))
+    }
+  }, [])
 
-  const currentStatus = user ? getUserQueueStatus(user.id) : null
-
-  function refresh() {
+  async function refreshStatus() {
+    if (user) {
+      const s = await getQueueStatus(user.id).catch(() => null)
+      setCurrentStatus(s)
+    }
     setServices(getServices())
   }
 
   function getQueueInfo(serviceId) {
     const q = getQueueForService(serviceId)
     const svc = services.find(s => s.id === serviceId)
-    const userPos = user ? q.indexOf(user.id) : -1
     const waitMinutes = q.length * (svc?.expected || 10)
-    return { length: q.length, userPos, waitMinutes }
+    return { length: q.length, waitMinutes }
   }
 
   function showToast(message, type = 'success') {
@@ -29,26 +37,35 @@ export default function JoinQueue() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  function handleJoin() {
+  async function handleJoin() {
     if (!selected) return showToast('Select a service first.', 'error')
     const svc = services.find(s => s.id === selected)
     if (svc && !svc.open) return showToast('This service is currently closed.', 'error')
     if (currentStatus) return showToast('You are already in a queue. Leave first.', 'error')
-    joinQueue(selected, user.id)
-    showToast(`Joined ${svc?.name || selected} queue.`)
-    refresh()
+    try {
+      await joinQueue(selected, user.id)
+      showToast(`Joined ${svc?.name || selected} queue.`)
+      await refreshStatus()
+    } catch (err) {
+      showToast(err.message, 'error')
+    }
   }
 
-  function handleLeave() {
+  async function handleLeave() {
     if (!selected) return showToast('Select a service first.', 'error')
     const svc = services.find(s => s.id === selected)
-    leaveQueue(selected, user.id)
-    showToast(`Left ${svc?.name || selected} queue.`)
-    refresh()
+    try {
+      await leaveQueue(selected, user.id)
+      showToast(`Left ${svc?.name || selected} queue.`)
+      await refreshStatus()
+    } catch (err) {
+      showToast(err.message, 'error')
+    }
   }
 
   const selectedInfo = selected ? getQueueInfo(selected) : null
   const selectedService = selected ? services.find(s => s.id === selected) : null
+  const userInSelected = currentStatus?.serviceId === selected
 
   return (
     <div className="jq-page">
@@ -117,7 +134,7 @@ export default function JoinQueue() {
                 <button className="jq-btn-primary" onClick={handleJoin} disabled={!selectedService?.open || !!currentStatus}>
                   {currentStatus ? 'Already in Queue' : 'Join Queue'}
                 </button>
-                {selectedInfo.userPos >= 0 && (
+                {userInSelected && (
                   <button className="jq-btn-danger" onClick={handleLeave}>Leave Queue</button>
                 )}
               </div>

@@ -1,13 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getCurrentUser, getHistoryForUser, getServices } from '../services/localApi'
+import { getCurrentUser, getServices } from '../services/localApi'
+import { getHistory } from '../services/userApi'
 import '../styles/History.css'
 
 export default function History() {
   const user = getCurrentUser()
-  const history = user ? getHistoryForUser(user.id) : []
   const services = getServices()
+  const [history, setHistory] = useState([])
   const [filter, setFilter] = useState('all')
+
+  useEffect(() => {
+    if (user) {
+      getHistory(user.id).then(setHistory).catch(() => setHistory([]))
+    }
+  }, [])
 
   function svcName(id) {
     return services.find(s => s.id === id)?.name || id

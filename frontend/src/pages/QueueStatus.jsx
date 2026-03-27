@@ -1,35 +1,31 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getCurrentUser, getUserQueueStatus, getServices, getQueueForService, leaveQueue } from '../services/localApi'
+import { getCurrentUser, getServices } from '../services/localApi'
+import { getQueueStatus, leaveQueue } from '../services/userApi'
 import '../styles/QueueStatus.css'
 
 export default function QueueStatus() {
   const [services, setServices] = useState([])
-  const [, setTick] = useState(0)
+  const [status, setStatus] = useState(null)
   const user = getCurrentUser()
 
-  useEffect(() => { setServices(getServices()) }, [])
+  useEffect(() => {
+    setServices(getServices())
+    if (user) {
+      getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
+    }
+  }, [])
 
-  const status = user ? getUserQueueStatus(user.id) : null
   const svc = status ? services.find(s => s.id === status.serviceId) : null
-  const queue = status ? getQueueForService(status.serviceId) : []
-  const totalInQueue = queue.length
-
-  function estWait() {
-    if (!status || !svc) return 0
-    return status.position * (svc.expected || 10)
-  }
 
   function getStatusText() {
     if (!status) return ''
-    if (status.position === 1) return 'Almost ready'
-    return 'Waiting'
+    return status.position === 1 ? 'Almost ready' : 'Waiting'
   }
 
   function getStatusClass() {
     if (!status) return ''
-    if (status.position === 1) return 'almost'
-    return 'waiting'
+    return status.position === 1 ? 'almost' : 'waiting'
   }
 
   function getOrdinal(n) {
@@ -39,15 +35,17 @@ export default function QueueStatus() {
   }
 
   function getProgress() {
-    if (!totalInQueue || !status) return 0
-    return Math.max(8, Math.round(((totalInQueue - status.position + 1) / totalInQueue) * 100))
+    if (!status) return 0
+    return Math.max(8, Math.round(((status.total - status.position + 1) / status.total) * 100))
   }
 
-  function handleLeave() {
-    if (status) {
-      leaveQueue(status.serviceId, user.id)
-      setTick(t => t + 1)
-      setServices(getServices())
+  async function handleLeave() {
+    if (!status) return
+    try {
+      await leaveQueue(status.serviceId, user.id)
+      setStatus(null)
+    } catch {
+      // leave silently — status will re-check on next load
     }
   }
 
@@ -107,7 +105,7 @@ export default function QueueStatus() {
           </div>
           <div className="qs-row">
             <span className="qs-row-label">Estimated wait</span>
-            <span className="qs-row-value">{estWait()} min</span>
+            <span className="qs-row-value">{status.expectedWait} min</span>
           </div>
           <div className="qs-row">
             <span className="qs-row-label">Status</span>
@@ -118,7 +116,7 @@ export default function QueueStatus() {
           </div>
           <div className="qs-row">
             <span className="qs-row-label">Total in queue</span>
-            <span className="qs-row-value">{totalInQueue}</span>
+            <span className="qs-row-value">{status.total}</span>
           </div>
         </div>
 

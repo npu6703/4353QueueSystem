@@ -1,23 +1,24 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getCurrentUser, getServices, getUserQueueStatus, getQueueForService, getHistoryForUser } from '../services/localApi'
+import { getCurrentUser, getServices, getQueueForService } from '../services/localApi'
+import { getQueueStatus, getHistory } from '../services/userApi'
 import '../styles/UserDashboard.css'
 
 export default function UserDashboard() {
   const [services, setServices] = useState([])
+  const [status, setStatus] = useState(null)
+  const [history, setHistory] = useState([])
   const user = getCurrentUser()
 
-  useEffect(() => { setServices(getServices()) }, [])
+  useEffect(() => {
+    setServices(getServices())
+    if (!user) return
+    getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
+    getHistory(user.id).then(setHistory).catch(() => setHistory([]))
+  }, [])
 
-  const status = user ? getUserQueueStatus(user.id) : null
-  const history = user ? getHistoryForUser(user.id) : []
   const openServices = services.filter(s => s.open)
   const activeService = status ? services.find(s => s.id === status.serviceId) : null
-
-  function estWait() {
-    if (!status || !activeService) return '—'
-    return `${status.position * (activeService.expected || 10)} min`
-  }
 
   function getQueueLength(serviceId) {
     return getQueueForService(serviceId).length
@@ -44,7 +45,7 @@ export default function UserDashboard() {
         </div>
         <div className="ud-stat-card blue">
           <div className="ud-stat-label">Est. Wait</div>
-          <div className="ud-stat-value">{status ? estWait() : '—'}</div>
+          <div className="ud-stat-value">{status ? `${status.expectedWait} min` : '—'}</div>
           <div className="ud-stat-note">{status ? 'approximate' : 'N/A'}</div>
         </div>
         <div className="ud-stat-card muted">
@@ -93,7 +94,7 @@ export default function UserDashboard() {
                   <div className="ud-queue-pos-circle">#{status.position}</div>
                   <div className="ud-queue-pos-text">
                     <strong>{activeService?.name || status.serviceId}</strong>
-                    <span>Estimated wait: {estWait()}</span>
+                    <span>Estimated wait: {status.expectedWait} min</span>
                   </div>
                 </div>
                 <span className={`ud-queue-chip ${status.position === 1 ? 'almost' : 'waiting'}`}>
