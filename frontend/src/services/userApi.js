@@ -7,11 +7,11 @@ async function request(path, options = {}) {
   return data
 }
 
-export async function joinQueue(serviceId, userId) {
+export async function joinQueue(serviceId, userId, userName) {
   return request('/api/queue/join', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ serviceId, userId }),
+    body: JSON.stringify({ serviceId, userId, userName }),
   })
 }
 

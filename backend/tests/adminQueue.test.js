@@ -272,30 +272,51 @@ describe('DELETE /api/admin/queues/:serviceId/remove/:userId', () => {
 describe('PUT /api/admin/queues/:serviceId/boost/:userId', () => {
   beforeEach(() => {
     store.queue['s1'] = [
-      { userId: 'user1', userName: 'John', priority: 'low', joinedAt: new Date().toISOString(), boost: 0 },
+      { userId: 'user1', userName: 'John', priority: 'high', joinedAt: new Date(Date.now() - 60000).toISOString() },
+      { userId: 'user2', userName: 'Jane', priority: 'low',  joinedAt: new Date().toISOString() },
     ]
   })
 
-  test('increases boost by the given amount', async () => {
+  test('moves user up one position (swaps joinedAt+priority with person above)', async () => {
+    const before2JoinedAt = store.queue['s1'][1].joinedAt
+    const before1JoinedAt = store.queue['s1'][0].joinedAt
+
+    const res = await request(app)
+      .put('/api/admin/queues/s1/boost/user2')
+      .set(ADMIN_HEADER)
+      .send({ amount: 5 }) // positive = move up
+
+    expect(res.status).toBe(200)
+    const user1 = store.queue['s1'].find(e => e.userId === 'user1')
+    const user2 = store.queue['s1'].find(e => e.userId === 'user2')
+    // joinedAt and priority should be swapped
+    expect(user2.joinedAt).toBe(before1JoinedAt)
+    expect(user1.joinedAt).toBe(before2JoinedAt)
+  })
+
+  test('moves user down one position (swaps with person below)', async () => {
+    const before1JoinedAt = store.queue['s1'][0].joinedAt
+    const before2JoinedAt = store.queue['s1'][1].joinedAt
+
     const res = await request(app)
       .put('/api/admin/queues/s1/boost/user1')
       .set(ADMIN_HEADER)
-      .send({ amount: 20 })
+      .send({ amount: -5 }) // negative = move down
 
     expect(res.status).toBe(200)
-    expect(store.queue['s1'][0].boost).toBe(20)
+    const user1 = store.queue['s1'].find(e => e.userId === 'user1')
+    const user2 = store.queue['s1'].find(e => e.userId === 'user2')
+    expect(user1.joinedAt).toBe(before2JoinedAt)
+    expect(user2.joinedAt).toBe(before1JoinedAt)
   })
 
-  test('stacks boosts on repeated calls', async () => {
-    await request(app).put('/api/admin/queues/s1/boost/user1').set(ADMIN_HEADER).send({ amount: 10 })
-    await request(app).put('/api/admin/queues/s1/boost/user1').set(ADMIN_HEADER).send({ amount: 5 })
+  test('returns 400 when already at top and moving up', async () => {
+    const res = await request(app)
+      .put('/api/admin/queues/s1/boost/user1')
+      .set(ADMIN_HEADER)
+      .send({ amount: 5 })
 
-    expect(store.queue['s1'][0].boost).toBe(15)
-  })
-
-  test('applies exactly 0 when amount is 0 (no default fallback)', async () => {
-    await request(app).put('/api/admin/queues/s1/boost/user1').set(ADMIN_HEADER).send({ amount: 0 })
-    expect(store.queue['s1'][0].boost).toBe(0)
+    expect(res.status).toBe(400)
   })
 
   test('returns 404 when user not in queue', async () => {
@@ -318,7 +339,7 @@ describe('PUT /api/admin/queues/:serviceId/movetotop/:userId', () => {
     ]
   })
 
-  test('moves a lower-ranked user to the top', async () => {
+  test('moves a lower-ranked user to the top via backdated joinedAt', async () => {
     const res = await request(app)
       .put('/api/admin/queues/s1/movetotop/user2')
       .set(ADMIN_HEADER)
@@ -326,15 +347,12 @@ describe('PUT /api/admin/queues/:serviceId/movetotop/:userId', () => {
     expect(res.status).toBe(200)
     expect(res.body.success).toBe(true)
 
-    // Verify user2 now has a higher score than user1
-    const queue = store.queue['s1']
-    const user1 = queue.find((e) => e.userId === 'user1')
-    const user2 = queue.find((e) => e.userId === 'user2')
-    expect(user2.boost).toBeGreaterThan(0)
-    // user2's effective score should now exceed user1's
+    // user1's data is untouched; user2's joinedAt is backdated so its score exceeds user1's
     const PRIORITY_WEIGHTS = { high: 30, medium: 15, low: 0 }
-    const score1 = PRIORITY_WEIGHTS[user1.priority] + (user1.boost || 0)
-    const score2 = PRIORITY_WEIGHTS[user2.priority] + (user2.boost || 0)
+    const user1 = store.queue['s1'].find((e) => e.userId === 'user1')
+    const user2 = store.queue['s1'].find((e) => e.userId === 'user2')
+    const score1 = PRIORITY_WEIGHTS[user1.priority] + (Date.now() - new Date(user1.joinedAt).getTime()) / 60000
+    const score2 = PRIORITY_WEIGHTS[user2.priority] + (Date.now() - new Date(user2.joinedAt).getTime()) / 60000
     expect(score2).toBeGreaterThan(score1)
   })
 

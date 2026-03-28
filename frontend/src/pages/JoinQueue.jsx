@@ -12,9 +12,12 @@ export default function JoinQueue() {
 
   useEffect(() => {
     setServices(getServices())
-    if (user) {
+    if (!user) return
+    getQueueStatus(user.id).then(setCurrentStatus).catch(() => setCurrentStatus(null))
+    const interval = setInterval(() => {
       getQueueStatus(user.id).then(setCurrentStatus).catch(() => setCurrentStatus(null))
-    }
+    }, 1000)
+    return () => clearInterval(interval)
   }, [])
 
   async function refreshStatus() {
@@ -43,7 +46,7 @@ export default function JoinQueue() {
     if (svc && !svc.open) return showToast('This service is currently closed.', 'error')
     if (currentStatus) return showToast('You are already in a queue. Leave first.', 'error')
     try {
-      await joinQueue(selected, user.id)
+      await joinQueue(selected, user.id, user.name)
       showToast(`Joined ${svc?.name || selected} queue.`)
       await refreshStatus()
     } catch (err) {

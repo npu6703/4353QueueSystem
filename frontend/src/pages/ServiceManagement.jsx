@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getServices, saveService, deleteService } from '../services/localApi'
+import { getServices, createService, updateService, deleteService } from '../services/adminApi'
 import {
   validateRequired,
   validateMaxLen,
@@ -9,48 +9,23 @@ import {
 export default function ServiceManagement() {
   const [services, setServices] = useState([])
   const [editing, setEditing] = useState(null)
+  const [apiError, setApiError] = useState('')
 
-  const [errors, setErrors] = useState({
-    name: '',
-    description: '',
-    expected: '',
-    priority: '',
-  })
-
-  const [touched, setTouched] = useState({
-    name: false,
-    description: false,
-    expected: false,
-    priority: false,
-  })
+  const [errors, setErrors] = useState({ name: '', description: '', expected: '', priority: '' })
+  const [touched, setTouched] = useState({ name: false, description: false, expected: false, priority: false })
 
   useEffect(() => {
-    setServices(getServices())
+    getServices().then(setServices).catch(() => setApiError('Could not load services. Is the server running?'))
   }, [])
 
   function resetValidation() {
-    setErrors({
-      name: '',
-      description: '',
-      expected: '',
-      priority: '',
-    })
-    setTouched({
-      name: false,
-      description: false,
-      expected: false,
-      priority: false,
-    })
+    setErrors({ name: '', description: '', expected: '', priority: '' })
+    setTouched({ name: false, description: false, expected: false, priority: false })
+    setApiError('')
   }
 
   function startCreate() {
-    setEditing({
-      name: '',
-      description: '',
-      expected: 10,
-      priority: 'low',
-      open: true,
-    })
+    setEditing({ name: '', description: '', expected: 10, priority: 'low', open: true })
     resetValidation()
   }
 
@@ -61,40 +36,41 @@ export default function ServiceManagement() {
 
   function runValidation(next = editing) {
     if (!next) return false
-
     const newErrors = {
-      name:
-        validateRequired(next.name, 'Service Name') ||
-        validateMaxLen(next.name, 100, 'Service Name'),
+      name: validateRequired(next.name, 'Service Name') || validateMaxLen(next.name, 100, 'Service Name'),
       description: validateRequired(next.description, 'Description'),
       expected: validatePositiveInt(next.expected, 'Expected Duration'),
       priority: validateRequired(next.priority, 'Priority'),
     }
-
     setErrors(newErrors)
-
-    return (
-      !newErrors.name &&
-      !newErrors.description &&
-      !newErrors.expected &&
-      !newErrors.priority
-    )
+    return !newErrors.name && !newErrors.description && !newErrors.expected && !newErrors.priority
   }
 
-  function save() {
-    setTouched({
-      name: true,
-      description: true,
-      expected: true,
-      priority: true,
-    })
+  async function save() {
+    setTouched({ name: true, description: true, expected: true, priority: true })
+    if (!runValidation()) return
 
-    const ok = runValidation()
-    if (!ok) return
+    try {
+      if (editing.id) {
+        await updateService(editing.id, editing)
+      } else {
+        await createService(editing)
+      }
+      const updated = await getServices()
+      setServices(updated)
+      setEditing(null)
+    } catch (err) {
+      setApiError(err.message)
+    }
+  }
 
-    saveService(editing)
-    setServices(getServices())
-    setEditing(null)
+  async function handleDelete(id) {
+    try {
+      await deleteService(id)
+      setServices(await getServices())
+    } catch (err) {
+      setApiError(err.message)
+    }
   }
 
   return (
@@ -103,6 +79,8 @@ export default function ServiceManagement() {
         <h2 style={{ margin: 0 }}>Service Management</h2>
         <button className="primary" onClick={startCreate}>+ New Service</button>
       </div>
+
+      {apiError && <div className="form-error">{apiError}</div>}
 
       <table className="sm-table">
         <thead>
@@ -128,7 +106,7 @@ export default function ServiceManagement() {
               <td><span className={`sm-status ${s.open ? 'sm-open' : 'sm-closed'}`}>{s.open ? 'Open' : 'Closed'}</span></td>
               <td style={{ textAlign: 'right' }}>
                 <button className="sm-btn sm-btn-edit" onClick={() => edit(s)}>Edit</button>
-                <button className="sm-btn sm-btn-delete" onClick={() => { deleteService(s.id); setServices(getServices()) }}>Delete</button>
+                <button className="sm-btn sm-btn-delete" onClick={() => handleDelete(s.id)}>Delete</button>
               </td>
             </tr>
           ))}
@@ -144,22 +122,14 @@ export default function ServiceManagement() {
             <input
               value={editing.name}
               onChange={(e) => {
-                const v = e.target.value
-                const next = { ...editing, name: v }
+                const next = { ...editing, name: e.target.value }
                 setEditing(next)
                 if (touched.name) runValidation(next)
               }}
-              onBlur={() => {
-                setTouched((t) => ({ ...t, name: true }))
-                runValidation()
-              }}
-              className={
-                touched.name && errors.name ? 'input error' : 'input'
-              }
+              onBlur={() => { setTouched(t => ({ ...t, name: true })); runValidation() }}
+              className={touched.name && errors.name ? 'input error' : 'input'}
             />
-            {touched.name && errors.name && (
-              <div className="error-text">{errors.name}</div>
-            )}
+            {touched.name && errors.name && <div className="error-text">{errors.name}</div>}
           </div>
 
           {/* Description */}
@@ -168,56 +138,32 @@ export default function ServiceManagement() {
             <textarea
               value={editing.description}
               onChange={(e) => {
-                const v = e.target.value
-                const next = { ...editing, description: v }
+                const next = { ...editing, description: e.target.value }
                 setEditing(next)
                 if (touched.description) runValidation(next)
               }}
-              onBlur={() => {
-                setTouched((t) => ({ ...t, description: true }))
-                runValidation()
-              }}
-              className={
-                touched.description && errors.description
-                  ? 'input error'
-                  : 'input'
-              }
+              onBlur={() => { setTouched(t => ({ ...t, description: true })); runValidation() }}
+              className={touched.description && errors.description ? 'input error' : 'input'}
             />
-            {touched.description && errors.description && (
-              <div className="error-text">
-                {errors.description}
-              </div>
-            )}
+            {touched.description && errors.description && <div className="error-text">{errors.description}</div>}
           </div>
 
-          {/* Expected */}
+          {/* Expected Duration */}
           <div className="form-row">
             <label>Expected Duration (minutes)</label>
             <input
               type="number"
               value={editing.expected}
               onChange={(e) => {
-                const raw = e.target.value
-                const val = raw === '' ? '' : Number(raw)
+                const val = e.target.value === '' ? '' : Number(e.target.value)
                 const next = { ...editing, expected: val }
                 setEditing(next)
                 if (touched.expected) runValidation(next)
               }}
-              onBlur={() => {
-                setTouched((t) => ({ ...t, expected: true }))
-                runValidation()
-              }}
-              className={
-                touched.expected && errors.expected
-                  ? 'input error'
-                  : 'input'
-              }
+              onBlur={() => { setTouched(t => ({ ...t, expected: true })); runValidation() }}
+              className={touched.expected && errors.expected ? 'input error' : 'input'}
             />
-            {touched.expected && errors.expected && (
-              <div className="error-text">
-                {errors.expected}
-              </div>
-            )}
+            {touched.expected && errors.expected && <div className="error-text">{errors.expected}</div>}
           </div>
 
           {/* Priority */}
@@ -226,31 +172,19 @@ export default function ServiceManagement() {
             <select
               value={editing.priority}
               onChange={(e) => {
-                const v = e.target.value
-                const next = { ...editing, priority: v }
+                const next = { ...editing, priority: e.target.value }
                 setEditing(next)
                 if (touched.priority) runValidation(next)
               }}
-              onBlur={() => {
-                setTouched((t) => ({ ...t, priority: true }))
-                runValidation()
-              }}
-              className={
-                touched.priority && errors.priority
-                  ? 'input error'
-                  : 'input'
-              }
+              onBlur={() => { setTouched(t => ({ ...t, priority: true })); runValidation() }}
+              className={touched.priority && errors.priority ? 'input error' : 'input'}
             >
               <option value="">Select</option>
               <option value="low">low</option>
               <option value="medium">medium</option>
               <option value="high">high</option>
             </select>
-            {touched.priority && errors.priority && (
-              <div className="error-text">
-                {errors.priority}
-              </div>
-            )}
+            {touched.priority && errors.priority && <div className="error-text">{errors.priority}</div>}
           </div>
 
           {/* Open */}
@@ -259,25 +193,13 @@ export default function ServiceManagement() {
             <input
               type="checkbox"
               checked={!!editing.open}
-              onChange={(e) =>
-                setEditing({
-                  ...editing,
-                  open: e.target.checked,
-                })
-              }
+              onChange={(e) => setEditing({ ...editing, open: e.target.checked })}
             />
           </div>
 
           <div style={{ marginTop: 10 }}>
-            <button className="primary" onClick={save}>
-              Save
-            </button>
-            <button
-              style={{ marginLeft: 10 }}
-              onClick={() => setEditing(null)}
-            >
-              Cancel
-            </button>
+            <button className="primary" onClick={save}>Save</button>
+            <button style={{ marginLeft: 10 }} onClick={() => setEditing(null)}>Cancel</button>
           </div>
         </div>
       )}

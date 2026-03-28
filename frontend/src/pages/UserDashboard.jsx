@@ -15,6 +15,10 @@ export default function UserDashboard() {
     if (!user) return
     getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
     getHistory(user.id).then(setHistory).catch(() => setHistory([]))
+    const interval = setInterval(() => {
+      getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
+    }, 1000)
+    return () => clearInterval(interval)
   }, [])
 
   const openServices = services.filter(s => s.open)

@@ -11,9 +11,12 @@ export default function QueueStatus() {
 
   useEffect(() => {
     setServices(getServices())
-    if (user) {
+    if (!user) return
+    getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
+    const interval = setInterval(() => {
       getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
-    }
+    }, 1000)
+    return () => clearInterval(interval)
   }, [])
 
   const svc = status ? services.find(s => s.id === status.serviceId) : null

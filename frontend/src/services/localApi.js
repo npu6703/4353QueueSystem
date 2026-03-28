@@ -44,7 +44,7 @@ function ensureDefaults() {
   if (!read(STORAGE_KEYS.QUEUES, null)) write(STORAGE_KEYS.QUEUES, {})
   if (!read(STORAGE_KEYS.USERS, null)) write(STORAGE_KEYS.USERS, [
     { id: 'admin1', email: 'admin@queue.com', password: 'admin123', name: 'Admin', isAdmin: true },
-    { id: 'user1', email: 'user@queue.com', password: 'user123', name: 'John Doe', isAdmin: false }
+    { id: 'user1', email: 'user@queue.com', password: 'user12345', name: 'John Doe', isAdmin: false }
   ])
   if (!read(STORAGE_KEYS.HISTORY, null)) write(STORAGE_KEYS.HISTORY, [])
   if (!read(STORAGE_KEYS.NOTIFS, null)) write(STORAGE_KEYS.NOTIFS, [])
