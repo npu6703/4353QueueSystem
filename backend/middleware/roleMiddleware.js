@@ -1,14 +1,8 @@
-const checkAdmin = (req, res, next) => {
-  const role = req.headers.role;
-
-  if (!role || role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied: admin only'
-    });
+function checkAdmin(req, res, next) {
+  if (req.headers['role'] === 'admin') {
+    return next();
   }
-
-  next();
-};
+  return res.status(403).json({ success: false, message: 'Forbidden: admin access required' });
+}
 
 module.exports = { checkAdmin };
