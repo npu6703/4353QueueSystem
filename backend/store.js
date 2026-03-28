@@ -13,7 +13,7 @@ const store = {
 		{
 			id: 'user1',
 			email: 'user@queue.com',
-			password: 'user123',
+			password: 'user12345',
 			name: 'John Doe',
 			isAdmin: false,
 		},
@@ -23,7 +23,7 @@ const store = {
 			id: 's1',
 			name: 'Dine-in',
 			description: 'Table service',
-			expected: 30,
+			expected: 10,
 			priority: 'medium',
 			open: true,
 		},

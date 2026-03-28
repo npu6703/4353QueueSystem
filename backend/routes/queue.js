@@ -46,7 +46,7 @@ function getSortedQueue(serviceId) {
 
 // POST /api/queue/join
 router.post('/api/queue/join', (req, res) => {
-	const { serviceId, userId, priority } = req.body;
+	const { serviceId, userId, userName: bodyUserName, priority } = req.body;
 
 	if (!serviceId || !userId) {
 		return res.status(400).json({ error: 'serviceId and userId are required' });
@@ -69,7 +69,7 @@ router.post('/api/queue/join', (req, res) => {
 	const user = store.users.find((u) => u.id === userId);
 	const entry = {
 		userId,
-		userName: user?.name || userId,
+		userName: bodyUserName || user?.name || userId,
 		priority: priority || svc?.priority || 'low',
 		joinedAt: new Date().toISOString(),
 	};

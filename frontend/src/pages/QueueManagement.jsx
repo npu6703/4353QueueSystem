@@ -1,100 +1,156 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
-  getServices, getSortedQueue, serveNext, removeFromQueue,
-  boostUser, moveToTop, changeUserPriority, calcEffectiveScore, saveService,
-  adminAddToQueue
-} from '../services/localApi'
+  getAllQueues, getQueue, serveNext, addWalkIn, removeUser,
+  boostUser, moveToTop, changePriority, toggleService,
+} from '../services/adminApi'
 import '../styles/AdminDashboard.css'
 
 export default function QueueManagement() {
-  const [services, setServices] = useState([])
+  const [summary, setSummary] = useState([])
   const [selectedSvc, setSelectedSvc] = useState('')
+  const [queueData, setQueueData] = useState(null) // { service, queue }
   const [message, setMessage] = useState(null)
+  const [nowServing, setNowServing] = useState(null) // { userName, priority, serviceName }
   const [showAddForm, setShowAddForm] = useState(false)
   const [walkInName, setWalkInName] = useState('')
   const [walkInPhone, setWalkInPhone] = useState('')
   const [walkInNotes, setWalkInNotes] = useState('')
   const [walkInPriority, setWalkInPriority] = useState('low')
-  const [, setTick] = useState(0)
 
-  useEffect(() => {
-    const svcs = getServices()
-    setServices(svcs)
-    if (svcs.length > 0) setSelectedSvc(svcs[0].id)
-  }, [])
-
-  // Refresh every 5s so scores update live from aging
-  useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 5000)
-    return () => clearInterval(interval)
-  }, [])
-
-  function refresh() { setServices(getServices()) }
-
-  function showMsg(type, text) {
+  const showMsg = (type, text) => {
     setMessage({ type, text })
     setTimeout(() => setMessage(null), 3000)
   }
 
-  function handleServe(serviceId) {
-    const result = serveNext(serviceId)
-    if (!result) showMsg('error', 'No one in queue to serve')
-    else showMsg('success', `Served: ${result.userName}`)
-    refresh()
+  const loadSummary = useCallback(async () => {
+    try {
+      const data = await getAllQueues()
+      setSummary(data)
+      // Set initial selection once (state setter is stable, no dep needed)
+      setSelectedSvc(prev => prev || (data.length > 0 ? data[0].serviceId : ''))
+    } catch {
+      showMsg('error', 'Could not load queues. Is the server running?')
+    }
+  }, [])
+
+  const loadQueue = useCallback(async (svcId) => {
+    if (!svcId) return
+    try {
+      const data = await getQueue(svcId)
+      setQueueData(data)
+    } catch {
+      setQueueData(null)
+    }
+  }, [])
+
+  useEffect(() => { loadSummary() }, [loadSummary])
+
+  useEffect(() => { loadQueue(selectedSvc) }, [selectedSvc, loadQueue])
+
+  // Auto-refresh every 5s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadSummary()
+      loadQueue(selectedSvc)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [loadSummary, loadQueue, selectedSvc])
+
+  async function handleServe() {
+    try {
+      const result = await serveNext(selectedSvc)
+      setNowServing({
+        userName: result.served.userName,
+        priority: result.served.priority,
+        serviceName: currentSvc?.name || '',
+        servedAt: new Date().toLocaleTimeString(),
+      })
+      await loadSummary()
+      await loadQueue(selectedSvc)
+    } catch (err) {
+      showMsg('error', err.message)
+    }
   }
 
-  function handleRemove(serviceId, userId, userName) {
-    removeFromQueue(serviceId, userId)
-    showMsg('success', `Removed ${userName} from queue`)
-    refresh()
+  async function handleRemove(userId, userName) {
+    try {
+      await removeUser(selectedSvc, userId)
+      showMsg('success', `Removed ${userName} from queue`)
+      await loadSummary()
+      await loadQueue(selectedSvc)
+    } catch (err) {
+      showMsg('error', err.message)
+    }
   }
 
-  function handleMoveUp(serviceId, userId) {
-    boostUser(serviceId, userId, 1)
-    refresh()
+  async function handleMoveUp(userId) {
+    try {
+      await boostUser(selectedSvc, userId, 5)
+      await loadQueue(selectedSvc)
+    } catch (err) {
+      showMsg('error', err.message)
+    }
   }
 
-  function handleMoveDown(serviceId, userId) {
-    boostUser(serviceId, userId, -1)
-    refresh()
+  async function handleMoveDown(userId) {
+    try {
+      await boostUser(selectedSvc, userId, -5)
+      await loadQueue(selectedSvc)
+    } catch (err) {
+      showMsg('error', err.message)
+    }
   }
 
-  function handleMoveToTop(serviceId, userId, userName) {
-    moveToTop(serviceId, userId)
-    showMsg('success', `Moved ${userName} to top of queue`)
-    refresh()
+  async function handleMoveToTop(userId, userName) {
+    try {
+      await moveToTop(selectedSvc, userId)
+      showMsg('success', `Moved ${userName} to top of queue`)
+      await loadQueue(selectedSvc)
+    } catch (err) {
+      showMsg('error', err.message)
+    }
   }
 
-  function handlePriorityChange(serviceId, userId, newPriority) {
-    changeUserPriority(serviceId, userId, newPriority)
-    refresh()
+  async function handlePriorityChange(userId, newPriority) {
+    try {
+      await changePriority(selectedSvc, userId, newPriority)
+      await loadQueue(selectedSvc)
+    } catch (err) {
+      showMsg('error', err.message)
+    }
   }
 
-  function handleAddWalkIn() {
+  async function handleAddWalkIn() {
     if (!walkInName.trim()) { showMsg('error', 'Please enter a name'); return }
     if (!selectedSvc) { showMsg('error', 'Please select a service first'); return }
-    adminAddToQueue(selectedSvc, walkInName.trim(), walkInPriority, walkInPhone.trim(), walkInNotes.trim())
-    showMsg('success', `Added ${walkInName.trim()} to queue`)
-    setWalkInName('')
-    setWalkInPhone('')
-    setWalkInNotes('')
-    setWalkInPriority('low')
-    setShowAddForm(false)
-    refresh()
+    try {
+      await addWalkIn(selectedSvc, walkInName.trim(), walkInPriority)
+      showMsg('success', `Added ${walkInName.trim()} to queue`)
+      setWalkInName('')
+      setWalkInPhone('')
+      setWalkInNotes('')
+      setWalkInPriority('low')
+      setShowAddForm(false)
+      await loadSummary()
+      await loadQueue(selectedSvc)
+    } catch (err) {
+      showMsg('error', err.message)
+    }
   }
 
-  function handleToggleService(svc) {
-    saveService({ ...svc, open: !svc.open })
-    refresh()
+  async function handleToggleService() {
+    try {
+      await toggleService(selectedSvc)
+      await loadSummary()
+      await loadQueue(selectedSvc)
+    } catch (err) {
+      showMsg('error', err.message)
+    }
   }
 
-  function getWaitedMin(joinedAt) {
-    return Math.round((Date.now() - new Date(joinedAt).getTime()) / 60000)
-  }
-
-  const currentSvc = services.find(s => s.id === selectedSvc)
-  const sortedQueue = selectedSvc ? getSortedQueue(selectedSvc) : []
-  const totalInAllQueues = services.reduce((sum, s) => sum + getSortedQueue(s.id).length, 0)
+  const currentSvc = queueData?.service
+  const sortedQueue = queueData?.queue || []
+  const totalInAllQueues = summary.reduce((sum, s) => sum + s.count, 0)
 
   return (
     <div className="admin-dashboard">
@@ -107,49 +163,61 @@ export default function QueueManagement() {
         </div>
       </div>
 
-      {/* Feedback message */}
       {message && (
-        <div className={message.type === 'error' ? 'form-error' : 'form-success'} style={{ marginBottom: '1rem' }}>
-          {message.text}
+        <div className={`qm-toast qm-toast-${message.type}`}>
+          <span className="qm-toast-icon">{message.type === 'error' ? '✕' : '✓'}</span>
+          <span className="qm-toast-text">{message.text}</span>
+          <div className="qm-toast-bar" />
+        </div>
+      )}
+
+      {/* Now Serving banner */}
+      {nowServing && (
+        <div className="now-serving-banner">
+          <div className="now-serving-left">
+            <span className="now-serving-label">NOW SERVING</span>
+            <span className="now-serving-name">{nowServing.userName}</span>
+            <span className={`priority-badge priority-${nowServing.priority}`}>{nowServing.priority}</span>
+          </div>
+          <div className="now-serving-right">
+            <span className="now-serving-meta">{nowServing.serviceName} · {nowServing.servedAt}</span>
+            <button className="now-serving-done" onClick={() => setNowServing(null)}>✓ Done</button>
+          </div>
         </div>
       )}
 
       {/* Service selector cards */}
       <div className="qm-service-cards">
-        {services.map(s => {
-          const q = getSortedQueue(s.id)
-          const isSelected = selectedSvc === s.id
-          return (
-            <div
-              key={s.id}
-              className={`qm-service-card ${isSelected ? 'qm-service-card-selected' : ''}`}
-              onClick={() => setSelectedSvc(s.id)}
-            >
-              <div className="qm-service-card-top">
-                <span className="qm-service-card-name">{s.name}</span>
-                <span className={`status-badge ${s.open ? 'status-open' : 'status-closed'}`}>
-                  {s.open ? 'Open' : 'Closed'}
-                </span>
-              </div>
-              <div className="qm-service-card-count">{q.length}</div>
-              <div className="qm-service-card-label">in queue</div>
-              <div className="qm-service-card-wait">
-                ~{q.length * (s.expected || 10)} min total wait
-              </div>
+        {summary.map(s => (
+          <div
+            key={s.serviceId}
+            className={`qm-service-card ${selectedSvc === s.serviceId ? 'qm-service-card-selected' : ''}`}
+            onClick={() => setSelectedSvc(s.serviceId)}
+          >
+            <div className="qm-service-card-top">
+              <span className="qm-service-card-name">{s.serviceName}</span>
+              <span className={`status-badge ${s.open ? 'status-open' : 'status-closed'}`}>
+                {s.open ? 'Open' : 'Closed'}
+              </span>
             </div>
-          )
-        })}
+            <div className="qm-service-card-count">{s.count}</div>
+            <div className="qm-service-card-label">in queue</div>
+            <div className="qm-service-card-wait">~{s.expectedWait} min total wait</div>
+          </div>
+        ))}
       </div>
 
       {/* Selected service queue detail */}
       {currentSvc && (
         <div className="admin-table-wrapper">
-          {/* Header row */}
           <div className="qm-queue-header">
             <div>
               <h3 className="admin-table-title" style={{ margin: 0 }}>
                 {currentSvc.name}
-                <span className={`status-badge ${currentSvc.open ? 'status-open' : 'status-closed'}`} style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }}>
+                <span
+                  className={`status-badge ${currentSvc.open ? 'status-open' : 'status-closed'}`}
+                  style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }}
+                >
                   {currentSvc.open ? 'Open' : 'Closed'}
                 </span>
               </h3>
@@ -168,13 +236,13 @@ export default function QueueManagement() {
               </button>
               <button
                 className={`admin-btn ${currentSvc.open ? 'admin-btn-danger' : 'admin-btn-success'}`}
-                onClick={() => handleToggleService(currentSvc)}
+                onClick={handleToggleService}
               >
                 {currentSvc.open ? 'Close Queue' : 'Open Queue'}
               </button>
               <button
                 className="admin-btn admin-btn-primary"
-                onClick={() => handleServe(selectedSvc)}
+                onClick={handleServe}
                 disabled={sortedQueue.length === 0 || !currentSvc.open}
                 title={!currentSvc.open ? 'Open this service first' : ''}
               >
@@ -183,7 +251,7 @@ export default function QueueManagement() {
             </div>
           </div>
 
-          {/* Walk-in add form */}
+          {/* Walk-in form */}
           {showAddForm && (
             <div className="qm-walkin-form">
               <h4 style={{ margin: '0 0 0.75rem 0' }}>Add Walk-in to Queue</h4>
@@ -230,16 +298,11 @@ export default function QueueManagement() {
                   <button className="admin-btn admin-btn-outline" onClick={() => setShowAddForm(false)}>Cancel</button>
                 </div>
               </div>
-              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                📱 Phone number stored for SMS notification when it&apos;s their turn (requires backend integration).
-              </p>
             </div>
           )}
 
           {sortedQueue.length === 0 ? (
-            <div className="qm-empty">
-              No one in this queue right now.
-            </div>
+            <div className="qm-empty">No one in this queue right now.</div>
           ) : (
             <table className="admin-table">
               <thead>
@@ -262,49 +325,35 @@ export default function QueueManagement() {
                       {entry.userName}
                       {i === 0 && <span className="queue-next-tag">NEXT</span>}
                       {entry.walkIn && <span className="qm-walkin-tag">Walk-in</span>}
-                      {entry.phone && <span className="qm-phone-tag" title={entry.phone}>{entry.phone}</span>}
-                      {entry.notes && <div className="qm-entry-notes" title={entry.notes}>💬 {entry.notes}</div>}
                     </td>
                     <td>
                       <select
                         className="qm-priority-select"
                         value={entry.priority}
-                        onChange={e => handlePriorityChange(selectedSvc, entry.userId, e.target.value)}
+                        onChange={e => handlePriorityChange(entry.userId, e.target.value)}
                       >
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
                         <option value="high">High</option>
                       </select>
                     </td>
-                    <td>{getWaitedMin(entry.joinedAt)} min</td>
-                    <td><strong>{calcEffectiveScore(entry).toFixed(1)}</strong></td>
+                    <td>{entry.waitedMinutes} min</td>
+                    <td><strong>{entry.score}</strong></td>
                     <td>{new Date(entry.joinedAt).toLocaleTimeString()}</td>
                     <td>
                       <div className="qm-reorder-btns">
                         {i > 0 && (
-                          <button
-                            className="qm-arrow-btn"
-                            onClick={() => handleMoveUp(selectedSvc, entry.userId)}
-                            title="Move up"
-                          >
+                          <button className="qm-arrow-btn" onClick={() => handleMoveUp(entry.userId)} title="Move up">
                             &#9650;
                           </button>
                         )}
                         {i < sortedQueue.length - 1 && (
-                          <button
-                            className="qm-arrow-btn"
-                            onClick={() => handleMoveDown(selectedSvc, entry.userId)}
-                            title="Move down"
-                          >
+                          <button className="qm-arrow-btn" onClick={() => handleMoveDown(entry.userId)} title="Move down">
                             &#9660;
                           </button>
                         )}
                         {i > 0 && (
-                          <button
-                            className="qm-top-btn"
-                            onClick={() => handleMoveToTop(selectedSvc, entry.userId, entry.userName)}
-                            title="Move to top"
-                          >
+                          <button className="qm-top-btn" onClick={() => handleMoveToTop(entry.userId, entry.userName)} title="Move to top">
                             Top
                           </button>
                         )}
@@ -313,7 +362,7 @@ export default function QueueManagement() {
                     <td>
                       <button
                         className="admin-btn admin-btn-danger"
-                        onClick={() => handleRemove(selectedSvc, entry.userId, entry.userName)}
+                        onClick={() => handleRemove(entry.userId, entry.userName)}
                       >
                         Remove
                       </button>
@@ -324,7 +373,6 @@ export default function QueueManagement() {
             </table>
           )}
 
-          {/* Algorithm explanation */}
           <div className="queue-algo-info">
             <strong>How scoring works:</strong> Score = Priority Weight (high: 30, medium: 15, low: 0) + (Minutes Waiting × 1).
             Highest score gets served first. Admins can override order using the arrow buttons or by changing priority.

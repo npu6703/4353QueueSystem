@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { register } from '../services/localApi'
 import {
   validateEmail,
   validatePassword,
@@ -59,7 +58,7 @@ export default function Register() {
     return !newErrors.name && !newErrors.phone && !newErrors.email && !newErrors.password
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault()
     setErr('')
     setTouched({ name: true, phone: true, email: true, password: true })
@@ -68,14 +67,14 @@ export default function Register() {
     if (!ok) return
 
     try {
-      // store phone as digits (clean) so it is consistent in storage
-      register({
-        name: name.trim(),
-        phone: phoneDigits, // digits only
-        email: email.trim(),
-        password,
+      const res = await fetch('http://localhost:3001/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), phone: phoneDigits, email: email.trim(), password, role: 'user' }),
       })
-      nav('/')
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message || 'Registration failed. Please try again.')
+      nav('/login')
     } catch (e) {
       setErr(e.message || 'Registration failed. Please try again.')
     }

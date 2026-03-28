@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { login } from '../services/localApi'
 import { validateEmail, validatePassword } from '../utils/validation'
 
 export default function Login() {
@@ -30,7 +29,7 @@ export default function Login() {
     return !newErrors.email && !newErrors.password
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault()
     setErr('')
     setTouched({ email: true, password: true })
@@ -39,12 +38,15 @@ export default function Login() {
     if (!ok) return
 
     try {
-      const user = login({
-        email: email.trim(),
-        password,
+      const res = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
       })
-
-      if (user.isAdmin) {
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message || 'Login failed')
+      localStorage.setItem('qs_current', JSON.stringify(json.data))
+      if (json.data.isAdmin) {
         nav('/admin')
       } else {
         nav('/')
