@@ -35,7 +35,7 @@ export function validateEmail(email) {
 }
 
 // =============================
-// PASSWORD VALIDATION
+// PASSWORD VALIDATION (FIXED)
 // =============================
 
 export function validatePassword(password) {
@@ -43,8 +43,13 @@ export function validatePassword(password) {
 
   if (!value) return 'Password is required.'
 
-  if (value.length < 8) {
-    return 'Password must be at least 8 characters long.'
+  // 🔥 FIX: match backend (>= 4)
+  if (value.length < 4) {
+    return 'Password must be at least 4 characters long.'
+  }
+
+  if (value.length > 50) {
+    return 'Password must not exceed 50 characters.'
   }
 
   return ''
@@ -58,12 +63,9 @@ export function digitsOnly(value) {
   return String(value || '').replace(/\D/g, '')
 }
 
-// formats: (xxx) xxx-xxxx
-// accepts up to 11 digits (leading 1)
 export function formatPhoneUS(value) {
   let d = digitsOnly(value).slice(0, 11)
 
-  // if 11 digits but not starting with 1, trim to 10
   if (d.length === 11 && d[0] !== '1') {
     d = d.slice(0, 10)
   }
@@ -82,7 +84,6 @@ export function formatPhoneUS(value) {
     return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
   }
 
-  // 11 digits starting with 1
   return `1 (${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`
 }
 
