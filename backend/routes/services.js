@@ -1,9 +1,8 @@
 const express = require('express')
-const store = require('../store')
+const db = require('../db')
 const { checkAdmin } = require('../middleware/roleMiddleware')
 
 const router = express.Router()
-
 const VALID_PRIORITIES = ['low', 'medium', 'high']
 
 function validateServiceFields(body, requireAll) {
@@ -43,78 +42,110 @@ function validateServiceFields(body, requireAll) {
 }
 
 // GET /api/services — list all services (public)
-router.get('/api/services', (_req, res) => {
-  return res.status(200).json(store.services)
+router.get('/api/services', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+  'SELECT service_id AS id, name, description, expected_duration AS expected, priority, is_open AS `open` FROM Service')
+    return res.status(200).json(rows)
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to fetch services' })
+  }
 })
 
 // GET /api/services/:id — get one service (public)
-router.get('/api/services/:id', (req, res) => {
-  const svc = store.services.find((s) => s.id === req.params.id)
-  if (!svc) return res.status(404).json({ error: 'Service not found' })
-  return res.status(200).json(svc)
+router.get('/api/services/:id', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+  'SELECT service_id AS id, name, description, expected_duration AS expected, priority, is_open AS `open` FROM Service WHERE service_id = ?',
+  [req.params.id])
+if (rows.length === 0) return res.status(404).json({ error: 'Service not found' })
+    return res.status(200).json(rows[0])
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to fetch service' })
+  }
 })
 
 // POST /api/admin/services — create service (admin)
-router.post('/api/admin/services', checkAdmin, (req, res) => {
+router.post('/api/admin/services', checkAdmin, async (req, res) => {
   const errs = validateServiceFields(req.body, true)
   if (Object.keys(errs).length > 0) {
     return res.status(400).json({ error: Object.values(errs)[0], errors: errs })
   }
 
-  const { name, description, expected, priority, open } = req.body
-  const service = {
-    id: `s${Date.now()}`,
-    name: name.trim(),
-    description: description.trim(),
-    expected: Number(expected),
-    priority,
-    open: open !== false,
-  }
+  const { name, description, expected, priority } = req.body
 
-  store.services.push(service)
-  return res.status(201).json(service)
+  try {
+    const [result] = await db.query(
+      'INSERT INTO Service (name, description, expected_duration, priority) VALUES (?, ?, ?, ?)',
+      [name.trim(), description.trim(), Number(expected), priority]
+    )
+    return res.status(201).json({ id: result.insertId, name: name.trim(), description: description.trim(), expected: Number(expected), priority, open: true })
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to create service' })
+  }
 })
 
 // PUT /api/admin/services/:id — update service (admin)
-router.put('/api/admin/services/:id', checkAdmin, (req, res) => {
-  const idx = store.services.findIndex((s) => s.id === req.params.id)
-  if (idx === -1) return res.status(404).json({ error: 'Service not found' })
+router.put('/api/admin/services/:id', checkAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM Service WHERE service_id = ?', [req.params.id])
+    if (rows.length === 0) return res.status(404).json({ error: 'Service not found' })
 
-  const errs = validateServiceFields(req.body, false)
-  if (Object.keys(errs).length > 0) {
-    return res.status(400).json({ error: Object.values(errs)[0], errors: errs })
+    const errs = validateServiceFields(req.body, false)
+    if (Object.keys(errs).length > 0) {
+      return res.status(400).json({ error: Object.values(errs)[0], errors: errs })
+    }
+
+    const { name, description, expected, priority } = req.body
+    const current = rows[0]
+
+    await db.query(
+      'UPDATE Service SET name = ?, description = ?, expected_duration = ?, priority = ? WHERE service_id = ?',
+      [
+        name !== undefined ? name.trim() : current.name,
+        description !== undefined ? description.trim() : current.description,
+        expected !== undefined ? Number(expected) : current.expected_duration,
+        priority !== undefined ? priority : current.priority,
+        req.params.id,
+      ]
+    )
+
+    const [updated] = await db.query(
+  'SELECT service_id AS id, name, description, expected_duration AS expected, priority, is_open AS `open` FROM Service WHERE service_id = ?',
+  [req.params.id]
+)
+return res.status(200).json(updated[0])
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to update service' })
   }
-
-  const { name, description, expected, priority, open } = req.body
-  store.services[idx] = {
-    ...store.services[idx],
-    ...(name !== undefined && { name: name.trim() }),
-    ...(description !== undefined && { description: description.trim() }),
-    ...(expected !== undefined && { expected: Number(expected) }),
-    ...(priority !== undefined && { priority }),
-    ...(open !== undefined && { open }),
-  }
-
-  return res.status(200).json(store.services[idx])
 })
 
 // DELETE /api/admin/services/:id — delete service (admin)
-router.delete('/api/admin/services/:id', checkAdmin, (req, res) => {
-  const idx = store.services.findIndex((s) => s.id === req.params.id)
-  if (idx === -1) return res.status(404).json({ error: 'Service not found' })
+router.delete('/api/admin/services/:id', checkAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM Service WHERE service_id = ?', [req.params.id])
+    if (rows.length === 0) return res.status(404).json({ error: 'Service not found' })
 
-  store.services.splice(idx, 1)
-  delete store.queue[req.params.id]
-  return res.status(200).json({ success: true })
+    await db.query('DELETE FROM Service WHERE service_id = ?', [req.params.id])
+    return res.status(200).json({ success: true })
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to delete service' })
+  }
 })
 
-// PUT /api/admin/services/:id/toggle — toggle open/closed (admin)
-router.put('/api/admin/services/:id/toggle', checkAdmin, (req, res) => {
-  const svc = store.services.find((s) => s.id === req.params.id)
-  if (!svc) return res.status(404).json({ error: 'Service not found' })
+// PUT /api/admin/services/:id/toggle — toggle open/closed via Queue table (admin)
+router.put('/api/admin/services/:id/toggle', checkAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM Service WHERE service_id = ?', [req.params.id])
+    if (rows.length === 0) return res.status(404).json({ error: 'Service not found' })
 
-  svc.open = !svc.open
-  return res.status(200).json(svc)
+    const newOpen = !rows[0].is_open
+    await db.query('UPDATE Service SET is_open = ? WHERE service_id = ?', [newOpen, req.params.id])
+
+    return res.status(200).json({ ...rows[0], id: rows[0].service_id, open: newOpen })
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to toggle service' })
+  }
 })
 
 module.exports = router

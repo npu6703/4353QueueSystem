@@ -321,11 +321,13 @@ export default function QueueManagement() {
                 {sortedQueue.map((entry, i) => (
                   <tr key={entry.userId} className={i === 0 ? 'qm-next-row' : ''}>
                     <td><strong>{i + 1}</strong></td>
-                    <td className="service-name">
-                      {entry.userName}
-                      {i === 0 && <span className="queue-next-tag">NEXT</span>}
-                      {entry.walkIn && <span className="qm-walkin-tag">Walk-in</span>}
-                    </td>
+                    <td>
+  <div className="qm-name-cell">
+    <span className="service-name">{entry.userName}</span>
+    {i === 0 && <span className="queue-next-tag">NEXT</span>}
+    {entry.walkIn && <span className="qm-walkin-tag">Walk-in</span>}
+  </div>
+</td>
                     <td>
                       <select
                         className="qm-priority-select"

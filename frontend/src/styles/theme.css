@@ -1358,7 +1358,12 @@ button[disabled] {
   margin-left: 0.4rem;
   letter-spacing: 0.02em;
 }
-
+.qm-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
 .qm-phone-tag {
   display: inline-block;
   font-size: 0.72rem;

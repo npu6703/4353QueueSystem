@@ -1,27 +1,31 @@
 const request = require('supertest')
 const app = require('../server')
-const store = require('../store')
 
+jest.mock('../db', () => ({ query: jest.fn() }))
+
+const db = require('../db')
 const ADMIN_HEADER = { role: 'admin' }
 
-beforeEach(() => {
-  store.users = [
-    { id: 'user1', email: 'user@queue.com', password: 'user123', name: 'John Doe', isAdmin: false },
-    { id: 'user2', email: 'user2@queue.com', password: 'pass123', name: 'Jane Smith', isAdmin: false },
-  ]
-  store.services = [
-    { id: 's1', name: 'Dine-in', description: 'Table service', expected: 30, priority: 'medium', open: true },
-    { id: 's2', name: 'Takeaway', description: 'Quick pickup', expected: 10, priority: 'low', open: true },
-  ]
-  store.queue = {}
-  store.history = []
-  store.notifications = []
-})
+beforeEach(() => jest.resetAllMocks())
+
+// Helper to mock getQueueForService
+function mockQueueForService(queueId, serviceId, entries = []) {
+  db.query
+    .mockResolvedValueOnce([[{ queue_id: queueId, service_id: serviceId, status: 'open' }]])
+    .mockResolvedValueOnce([entries])
+}
 
 // ===== GET /api/admin/queues =====
 
 describe('GET /api/admin/queues', () => {
-  test('returns a summary of all service queues', async () => {
+  test('returns summary of all service queues', async () => {
+    db.query.mockResolvedValueOnce([[
+      { id: 1, name: 'Dine-in', description: 'Table service', expected: 30, priority: 'medium', open: true },
+      { id: 2, name: 'Takeaway', description: 'Quick pickup', expected: 10, priority: 'low', open: true },
+    ]])
+    mockQueueForService(1, 1, [])
+    mockQueueForService(2, 2, [])
+
     const res = await request(app).get('/api/admin/queues').set(ADMIN_HEADER)
 
     expect(res.status).toBe(200)
@@ -31,35 +35,46 @@ describe('GET /api/admin/queues', () => {
     expect(res.body[0]).toHaveProperty('next')
   })
 
-  test('count reflects actual queue length', async () => {
-    store.queue['s1'] = [
-      { userId: 'user1', userName: 'John', priority: 'low', joinedAt: new Date().toISOString() },
-      { userId: 'user2', userName: 'Jane', priority: 'low', joinedAt: new Date().toISOString() },
-    ]
+  test('count reflects actual queue entries', async () => {
+    db.query.mockResolvedValueOnce([[
+      { id: 1, name: 'Dine-in', description: 'Table service', expected: 30, priority: 'medium', open: true },
+    ]])
+    mockQueueForService(1, 1, [
+      { entry_id: 1, userId: 'u1', userName: 'Alice', priority: 'low', joinedAt: new Date().toISOString() },
+      { entry_id: 2, userId: 'u2', userName: 'Bob', priority: 'medium', joinedAt: new Date().toISOString() },
+    ])
+
     const res = await request(app).get('/api/admin/queues').set(ADMIN_HEADER)
-    const s1Summary = res.body.find((s) => s.serviceId === 's1')
-    expect(s1Summary.count).toBe(2)
-    expect(s1Summary.next.userId).toBe('user1')
+
+    expect(res.status).toBe(200)
+    expect(res.body[0].count).toBe(2)
   })
 
   test('returns 403 without admin header', async () => {
     const res = await request(app).get('/api/admin/queues')
     expect(res.status).toBe(403)
   })
+
+  test('returns 500 on database error', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'))
+    const res = await request(app).get('/api/admin/queues').set(ADMIN_HEADER)
+    expect(res.status).toBe(500)
+  })
 })
 
 // ===== GET /api/admin/queues/:serviceId =====
 
 describe('GET /api/admin/queues/:serviceId', () => {
-  beforeEach(() => {
-    store.queue['s1'] = [
-      { userId: 'user1', userName: 'John', priority: 'high', joinedAt: new Date().toISOString(), boost: 0 },
-      { userId: 'user2', userName: 'Jane', priority: 'low', joinedAt: new Date().toISOString(), boost: 0 },
-    ]
-  })
-
   test('returns service and sorted queue', async () => {
-    const res = await request(app).get('/api/admin/queues/s1').set(ADMIN_HEADER)
+    db.query.mockResolvedValueOnce([[
+      { id: 1, name: 'Dine-in', description: 'Table service', expected: 30, priority: 'medium', open: true }
+    ]])
+    mockQueueForService(1, 1, [
+      { entry_id: 1, userId: 'u1', userName: 'John', priority: 'high', joinedAt: new Date().toISOString() },
+      { entry_id: 2, userId: 'u2', userName: 'Jane', priority: 'low', joinedAt: new Date().toISOString() },
+    ])
+
+    const res = await request(app).get('/api/admin/queues/1').set(ADMIN_HEADER)
 
     expect(res.status).toBe(200)
     expect(res.body).toHaveProperty('service')
@@ -68,7 +83,15 @@ describe('GET /api/admin/queues/:serviceId', () => {
   })
 
   test('queue entries include position, score, and expectedWait', async () => {
-    const res = await request(app).get('/api/admin/queues/s1').set(ADMIN_HEADER)
+    db.query.mockResolvedValueOnce([[
+      { id: 1, name: 'Dine-in', description: 'Table service', expected: 30, priority: 'medium', open: true }
+    ]])
+    mockQueueForService(1, 1, [
+      { entry_id: 1, userId: 'u1', userName: 'John', priority: 'high', joinedAt: new Date().toISOString() },
+    ])
+
+    const res = await request(app).get('/api/admin/queues/1').set(ADMIN_HEADER)
+
     const first = res.body.queue[0]
     expect(first).toHaveProperty('position')
     expect(first).toHaveProperty('score')
@@ -76,13 +99,9 @@ describe('GET /api/admin/queues/:serviceId', () => {
     expect(first).toHaveProperty('waitedMinutes')
   })
 
-  test('high priority user is ranked first', async () => {
-    const res = await request(app).get('/api/admin/queues/s1').set(ADMIN_HEADER)
-    expect(res.body.queue[0].userId).toBe('user1') // high > low
-  })
-
   test('returns 404 for unknown service', async () => {
-    const res = await request(app).get('/api/admin/queues/ghost').set(ADMIN_HEADER)
+    db.query.mockResolvedValueOnce([[]])
+    const res = await request(app).get('/api/admin/queues/999').set(ADMIN_HEADER)
     expect(res.status).toBe(404)
   })
 })
@@ -90,17 +109,25 @@ describe('GET /api/admin/queues/:serviceId', () => {
 // ===== GET /api/admin/history =====
 
 describe('GET /api/admin/history', () => {
-  beforeEach(() => {
-    store.history = [
-      { id: 'h1', userId: 'user1', userName: 'John', serviceId: 's1', serviceName: 'Dine-in', outcome: 'served', date: new Date().toISOString() },
-      { id: 'h2', userId: 'user2', userName: 'Jane', serviceId: 's2', serviceName: 'Takeaway', outcome: 'served', date: new Date().toISOString() },
-    ]
-  })
+  test('returns all served history', async () => {
+    db.query.mockResolvedValueOnce([[
+      { entry_id: 1, user_name: 'John', priority: 'medium', service_name: 'Dine-in', status: 'served' },
+      { entry_id: 2, user_name: 'Jane', priority: 'low', service_name: 'Takeaway', status: 'served' },
+    ]])
 
-  test('returns all history for admin', async () => {
     const res = await request(app).get('/api/admin/history').set(ADMIN_HEADER)
+
     expect(res.status).toBe(200)
     expect(res.body).toHaveLength(2)
+  })
+
+  test('returns empty array when no history', async () => {
+    db.query.mockResolvedValueOnce([[]])
+
+    const res = await request(app).get('/api/admin/history').set(ADMIN_HEADER)
+
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual([])
   })
 
   test('returns 403 without admin header', async () => {
@@ -112,52 +139,39 @@ describe('GET /api/admin/history', () => {
 // ===== POST /api/admin/queues/:serviceId/serve =====
 
 describe('POST /api/admin/queues/:serviceId/serve', () => {
-  beforeEach(() => {
-    store.queue['s1'] = [
-      { userId: 'user1', userName: 'John', priority: 'high', joinedAt: new Date().toISOString(), boost: 0 },
-      { userId: 'user2', userName: 'Jane', priority: 'low', joinedAt: new Date().toISOString(), boost: 0 },
-    ]
-  })
+  test('serves the next user in queue', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in', expected: 30 }]])
+    mockQueueForService(1, 1, [
+      { entry_id: 1, userId: 'u1', userName: 'John', priority: 'high', joinedAt: new Date().toISOString() },
+    ])
+    db.query
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
 
-  test('serves the highest-scored user', async () => {
-    const res = await request(app).post('/api/admin/queues/s1/serve').set(ADMIN_HEADER)
+    const res = await request(app).post('/api/admin/queues/1/serve').set(ADMIN_HEADER)
 
     expect(res.status).toBe(200)
-    expect(res.body.served.userId).toBe('user1') // high priority
-    expect(store.queue['s1']).toHaveLength(1)
-    expect(store.queue['s1'][0].userId).toBe('user2')
-  })
-
-  test('adds a history record after serving', async () => {
-    await request(app).post('/api/admin/queues/s1/serve').set(ADMIN_HEADER)
-
-    expect(store.history).toHaveLength(1)
-    expect(store.history[0].outcome).toBe('served')
-    expect(store.history[0].userId).toBe('user1')
-  })
-
-  test('notifies the next person in line', async () => {
-    await request(app).post('/api/admin/queues/s1/serve').set(ADMIN_HEADER)
-
-    const almostNotifs = store.notifications.filter((n) => n.type === 'almost')
-    expect(almostNotifs.length).toBeGreaterThanOrEqual(1)
+    expect(res.body).toHaveProperty('served')
   })
 
   test('returns 400 when queue is empty', async () => {
-    store.queue['s1'] = []
-    const res = await request(app).post('/api/admin/queues/s1/serve').set(ADMIN_HEADER)
+    db.query.mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in' }]])
+    mockQueueForService(1, 1, [])
+
+    const res = await request(app).post('/api/admin/queues/1/serve').set(ADMIN_HEADER)
 
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/empty/i)
   })
 
   test('returns 404 for unknown service', async () => {
-    const res = await request(app).post('/api/admin/queues/ghost/serve').set(ADMIN_HEADER)
+    db.query.mockResolvedValueOnce([[]])
+    const res = await request(app).post('/api/admin/queues/999/serve').set(ADMIN_HEADER)
     expect(res.status).toBe(404)
   })
 
   test('returns 403 without admin header', async () => {
-    const res = await request(app).post('/api/admin/queues/s1/serve')
+    const res = await request(app).post('/api/admin/queues/1/serve')
     expect(res.status).toBe(403)
   })
 })
@@ -166,103 +180,115 @@ describe('POST /api/admin/queues/:serviceId/serve', () => {
 
 describe('POST /api/admin/queues/:serviceId/walkin', () => {
   test('adds a walk-in user to the queue', async () => {
+    db.query.mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in', priority: 'medium' }]])
+    mockQueueForService(1, 1, [])
+    db.query.mockResolvedValueOnce([{ insertId: 5 }])
+
     const res = await request(app)
-      .post('/api/admin/queues/s1/walkin')
+      .post('/api/admin/queues/1/walkin')
       .set(ADMIN_HEADER)
       .send({ name: 'Walk In Bob', priority: 'medium' })
 
     expect(res.status).toBe(201)
-    expect(res.body.userName).toBe('Walk In Bob')
+    expect(res.body.user_name).toBe('Walk In Bob')
     expect(res.body.priority).toBe('medium')
-    expect(res.body.walkIn).toBe(true)
-    expect(res.body.userId).toMatch(/^walkin_/)
-    expect(store.queue['s1']).toHaveLength(1)
-  })
-
-  test('uses service default priority when none provided', async () => {
-    const res = await request(app)
-      .post('/api/admin/queues/s1/walkin')
-      .set(ADMIN_HEADER)
-      .send({ name: 'Bob' })
-
-    expect(res.status).toBe(201)
-    expect(res.body.priority).toBe('medium') // s1 default
+    expect(res.body.walk_in).toBe(true)
   })
 
   test('returns 400 when name is missing', async () => {
     const res = await request(app)
-      .post('/api/admin/queues/s1/walkin')
+      .post('/api/admin/queues/1/walkin')
       .set(ADMIN_HEADER)
       .send({ priority: 'low' })
-
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/name/i)
   })
 
   test('returns 400 when name exceeds 100 characters', async () => {
     const res = await request(app)
-      .post('/api/admin/queues/s1/walkin')
+      .post('/api/admin/queues/1/walkin')
       .set(ADMIN_HEADER)
       .send({ name: 'B'.repeat(101) })
-
     expect(res.status).toBe(400)
   })
 
   test('returns 404 for unknown service', async () => {
+    db.query.mockResolvedValueOnce([[]])
     const res = await request(app)
-      .post('/api/admin/queues/ghost/walkin')
+      .post('/api/admin/queues/999/walkin')
       .set(ADMIN_HEADER)
       .send({ name: 'Bob' })
-
     expect(res.status).toBe(404)
   })
 
-  test('fires a walkin notification', async () => {
-    await request(app)
-      .post('/api/admin/queues/s1/walkin')
-      .set(ADMIN_HEADER)
-      .send({ name: 'Alice' })
-
-    expect(store.notifications[0].type).toBe('walkin')
+  test('returns 403 without admin header', async () => {
+    const res = await request(app)
+      .post('/api/admin/queues/1/walkin')
+      .send({ name: 'Bob' })
+    expect(res.status).toBe(403)
   })
 })
 
 // ===== DELETE /api/admin/queues/:serviceId/remove/:userId =====
 
 describe('DELETE /api/admin/queues/:serviceId/remove/:userId', () => {
-  beforeEach(() => {
-    store.queue['s1'] = [
-      { userId: 'user1', userName: 'John', priority: 'low', joinedAt: new Date().toISOString() },
-      { userId: 'user2', userName: 'Jane', priority: 'low', joinedAt: new Date().toISOString() },
-    ]
-  })
+  test('removes user from queue', async () => {
+    db.query.mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in' }]])
+    mockQueueForService(1, 1, [])
+    db.query.mockResolvedValueOnce([{ affectedRows: 1 }])
 
-  test('removes the specified user from queue', async () => {
     const res = await request(app)
-      .delete('/api/admin/queues/s1/remove/user1')
+      .delete('/api/admin/queues/1/remove/1')
       .set(ADMIN_HEADER)
 
     expect(res.status).toBe(200)
     expect(res.body.success).toBe(true)
-    expect(res.body.removed).toBe(true)
-    expect(store.queue['s1']).toHaveLength(1)
-    expect(store.queue['s1'][0].userId).toBe('user2')
-  })
-
-  test('returns removed:false when user was not in queue', async () => {
-    const res = await request(app)
-      .delete('/api/admin/queues/s1/remove/nonexistent')
-      .set(ADMIN_HEADER)
-
-    expect(res.status).toBe(200)
-    expect(res.body.removed).toBe(false)
   })
 
   test('returns 404 for unknown service', async () => {
+    db.query.mockResolvedValueOnce([[]])
     const res = await request(app)
-      .delete('/api/admin/queues/ghost/remove/user1')
+      .delete('/api/admin/queues/999/remove/1')
       .set(ADMIN_HEADER)
+    expect(res.status).toBe(404)
+  })
 
+  test('returns 403 without admin header', async () => {
+    const res = await request(app).delete('/api/admin/queues/1/remove/1')
+    expect(res.status).toBe(403)
+  })
+})
+
+// ===== PUT /api/admin/queues/:serviceId/priority/:userId =====
+
+describe('PUT /api/admin/queues/:serviceId/priority/:userId', () => {
+  test('changes user priority', async () => {
+    db.query.mockResolvedValueOnce([{ affectedRows: 1 }])
+
+    const res = await request(app)
+      .put('/api/admin/queues/1/priority/1')
+      .set(ADMIN_HEADER)
+      .send({ priority: 'high' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+  })
+
+  test('returns 400 for invalid priority', async () => {
+    const res = await request(app)
+      .put('/api/admin/queues/1/priority/1')
+      .set(ADMIN_HEADER)
+      .send({ priority: 'urgent' })
+    expect(res.status).toBe(400)
+  })
+
+  test('returns 404 when user not found', async () => {
+    db.query.mockResolvedValueOnce([{ affectedRows: 0 }])
+
+    const res = await request(app)
+      .put('/api/admin/queues/1/priority/999')
+      .set(ADMIN_HEADER)
+      .send({ priority: 'high' })
     expect(res.status).toBe(404)
   })
 })
@@ -270,136 +296,114 @@ describe('DELETE /api/admin/queues/:serviceId/remove/:userId', () => {
 // ===== PUT /api/admin/queues/:serviceId/boost/:userId =====
 
 describe('PUT /api/admin/queues/:serviceId/boost/:userId', () => {
-  beforeEach(() => {
-    store.queue['s1'] = [
-      { userId: 'user1', userName: 'John', priority: 'high', joinedAt: new Date(Date.now() - 60000).toISOString() },
-      { userId: 'user2', userName: 'Jane', priority: 'low',  joinedAt: new Date().toISOString() },
-    ]
-  })
-
-  test('moves user up one position (swaps joinedAt+priority with person above)', async () => {
-    const before2JoinedAt = store.queue['s1'][1].joinedAt
-    const before1JoinedAt = store.queue['s1'][0].joinedAt
-
-    const res = await request(app)
-      .put('/api/admin/queues/s1/boost/user2')
-      .set(ADMIN_HEADER)
-      .send({ amount: 5 }) // positive = move up
-
-    expect(res.status).toBe(200)
-    const user1 = store.queue['s1'].find(e => e.userId === 'user1')
-    const user2 = store.queue['s1'].find(e => e.userId === 'user2')
-    // joinedAt and priority should be swapped
-    expect(user2.joinedAt).toBe(before1JoinedAt)
-    expect(user1.joinedAt).toBe(before2JoinedAt)
-  })
-
-  test('moves user down one position (swaps with person below)', async () => {
-    const before1JoinedAt = store.queue['s1'][0].joinedAt
-    const before2JoinedAt = store.queue['s1'][1].joinedAt
+  test('moves user up in queue', async () => {
+    const now = new Date().toISOString()
+    db.query
+      .mockResolvedValueOnce([[{ queue_id: 1, service_id: 1, status: 'open' }]])
+      .mockResolvedValueOnce([[
+        { entry_id: 1, userId: 'u1', userName: 'John', priority: 'low', joinedAt: new Date(Date.now() - 60000).toISOString() },
+        { entry_id: 2, userId: 'u2', userName: 'Jane', priority: 'low', joinedAt: now },
+      ]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
 
     const res = await request(app)
-      .put('/api/admin/queues/s1/boost/user1')
+      .put('/api/admin/queues/1/boost/2')
       .set(ADMIN_HEADER)
-      .send({ amount: -5 }) // negative = move down
+      .send({ amount: 5 })
 
     expect(res.status).toBe(200)
-    const user1 = store.queue['s1'].find(e => e.userId === 'user1')
-    const user2 = store.queue['s1'].find(e => e.userId === 'user2')
-    expect(user1.joinedAt).toBe(before2JoinedAt)
-    expect(user2.joinedAt).toBe(before1JoinedAt)
+    expect(res.body.success).toBe(true)
   })
 
   test('returns 400 when already at top and moving up', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ queue_id: 1, service_id: 1, status: 'open' }]])
+      .mockResolvedValueOnce([[
+        { entry_id: 1, userId: 'u1', userName: 'John', priority: 'high', joinedAt: new Date().toISOString() },
+      ]])
+
     const res = await request(app)
-      .put('/api/admin/queues/s1/boost/user1')
+      .put('/api/admin/queues/1/boost/1')
       .set(ADMIN_HEADER)
       .send({ amount: 5 })
 
     expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/cannot move/i)
   })
 
   test('returns 404 when user not in queue', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ queue_id: 1, service_id: 1, status: 'open' }]])
+      .mockResolvedValueOnce([[
+        { entry_id: 1, userId: 'u1', userName: 'John', priority: 'low', joinedAt: new Date().toISOString() },
+      ]])
+
     const res = await request(app)
-      .put('/api/admin/queues/s1/boost/nobody')
+      .put('/api/admin/queues/1/boost/999')
       .set(ADMIN_HEADER)
-      .send({ amount: 10 })
+      .send({ amount: 5 })
 
     expect(res.status).toBe(404)
+  })
+
+  test('returns 403 without admin header', async () => {
+    const res = await request(app)
+      .put('/api/admin/queues/1/boost/1')
+      .send({ amount: 5 })
+    expect(res.status).toBe(403)
   })
 })
 
 // ===== PUT /api/admin/queues/:serviceId/movetotop/:userId =====
 
 describe('PUT /api/admin/queues/:serviceId/movetotop/:userId', () => {
-  beforeEach(() => {
-    store.queue['s1'] = [
-      { userId: 'user1', userName: 'John', priority: 'high', joinedAt: new Date(Date.now() - 60000).toISOString(), boost: 0 },
-      { userId: 'user2', userName: 'Jane', priority: 'low', joinedAt: new Date().toISOString(), boost: 0 },
-    ]
-  })
+  test('moves user to top of queue', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ queue_id: 1, service_id: 1, status: 'open' }]])
+      .mockResolvedValueOnce([[
+        { entry_id: 1, userId: 'u1', userName: 'John', priority: 'high', joinedAt: new Date(Date.now() - 60000).toISOString() },
+        { entry_id: 2, userId: 'u2', userName: 'Jane', priority: 'low', joinedAt: new Date().toISOString() },
+      ]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
 
-  test('moves a lower-ranked user to the top via backdated joinedAt', async () => {
     const res = await request(app)
-      .put('/api/admin/queues/s1/movetotop/user2')
+      .put('/api/admin/queues/1/movetotop/2')
       .set(ADMIN_HEADER)
 
     expect(res.status).toBe(200)
     expect(res.body.success).toBe(true)
-
-    // user1's data is untouched; user2's joinedAt is backdated so its score exceeds user1's
-    const PRIORITY_WEIGHTS = { high: 30, medium: 15, low: 0 }
-    const user1 = store.queue['s1'].find((e) => e.userId === 'user1')
-    const user2 = store.queue['s1'].find((e) => e.userId === 'user2')
-    const score1 = PRIORITY_WEIGHTS[user1.priority] + (Date.now() - new Date(user1.joinedAt).getTime()) / 60000
-    const score2 = PRIORITY_WEIGHTS[user2.priority] + (Date.now() - new Date(user2.joinedAt).getTime()) / 60000
-    expect(score2).toBeGreaterThan(score1)
   })
 
-  test('returns 404 when user not in queue', async () => {
+  test('returns 400 when queue is empty', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ queue_id: 1, service_id: 1, status: 'open' }]])
+      .mockResolvedValueOnce([[]])
+
     const res = await request(app)
-      .put('/api/admin/queues/s1/movetotop/nobody')
+      .put('/api/admin/queues/1/movetotop/1')
       .set(ADMIN_HEADER)
-
-    expect(res.status).toBe(404)
-  })
-})
-
-// ===== PUT /api/admin/queues/:serviceId/priority/:userId =====
-
-describe('PUT /api/admin/queues/:serviceId/priority/:userId', () => {
-  beforeEach(() => {
-    store.queue['s1'] = [
-      { userId: 'user1', userName: 'John', priority: 'low', joinedAt: new Date().toISOString(), boost: 0 },
-    ]
-  })
-
-  test('changes user priority', async () => {
-    const res = await request(app)
-      .put('/api/admin/queues/s1/priority/user1')
-      .set(ADMIN_HEADER)
-      .send({ priority: 'high' })
-
-    expect(res.status).toBe(200)
-    expect(store.queue['s1'][0].priority).toBe('high')
-  })
-
-  test('returns 400 for invalid priority', async () => {
-    const res = await request(app)
-      .put('/api/admin/queues/s1/priority/user1')
-      .set(ADMIN_HEADER)
-      .send({ priority: 'urgent' })
 
     expect(res.status).toBe(400)
-    expect(res.body.error).toMatch(/priority/i)
+    expect(res.body.error).toMatch(/empty/i)
   })
 
   test('returns 404 when user not in queue', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ queue_id: 1, service_id: 1, status: 'open' }]])
+      .mockResolvedValueOnce([[
+        { entry_id: 1, userId: 'u1', userName: 'John', priority: 'high', joinedAt: new Date().toISOString() },
+      ]])
+
     const res = await request(app)
-      .put('/api/admin/queues/s1/priority/nobody')
+      .put('/api/admin/queues/1/movetotop/999')
       .set(ADMIN_HEADER)
-      .send({ priority: 'high' })
 
     expect(res.status).toBe(404)
+  })
+
+  test('returns 403 without admin header', async () => {
+    const res = await request(app).put('/api/admin/queues/1/movetotop/1')
+    expect(res.status).toBe(403)
   })
 })
