@@ -192,7 +192,7 @@ describe('POST /api/admin/queues/:serviceId/walkin', () => {
     expect(res.status).toBe(201)
     expect(res.body.user_name).toBe('Walk In Bob')
     expect(res.body.priority).toBe('medium')
-    expect(res.body.walk_in).toBe(true)
+    expect(res.body.walkIn).toBe(true)
   })
 
   test('returns 400 when name is missing', async () => {
