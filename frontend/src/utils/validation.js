@@ -35,7 +35,7 @@ export function validateEmail(email) {
 }
 
 // =============================
-// PASSWORD VALIDATION (FIXED)
+// PASSWORD VALIDATION
 // =============================
 
 export function validatePassword(password) {
@@ -43,7 +43,6 @@ export function validatePassword(password) {
 
   if (!value) return 'Password is required.'
 
-  // 🔥 FIX: match backend (>= 4)
   if (value.length < 4) {
     return 'Password must be at least 4 characters long.'
   }

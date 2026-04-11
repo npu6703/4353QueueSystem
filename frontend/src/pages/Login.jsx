@@ -43,9 +43,15 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
       })
+
       const json = await res.json()
-      if (!res.ok) throw new Error(json.message || 'Login failed')
+
+      if (!res.ok) {
+        throw new Error(json.message || 'Login failed')
+      }
+
       localStorage.setItem('qs_current', JSON.stringify(json.data))
+
       if (json.data.isAdmin) {
         nav('/admin')
       } else {
@@ -56,11 +62,7 @@ export default function Login() {
     }
   }
 
-  const canSubmit =
-    email.trim() &&
-    password &&
-    !errors.email &&
-    !errors.password
+  const canSubmit = email.trim() && password
 
   return (
     <div className="auth-page">
@@ -77,8 +79,9 @@ export default function Login() {
               onChange={(e) => {
                 const v = e.target.value
                 setEmail(v)
-                if (touched.email)
+                if (touched.email) {
                   runValidation({ email: v, password })
+                }
               }}
               onBlur={() => {
                 setTouched((t) => ({ ...t, email: true }))
@@ -102,17 +105,16 @@ export default function Login() {
               onChange={(e) => {
                 const v = e.target.value
                 setPassword(v)
-                if (touched.password)
+                if (touched.password) {
                   runValidation({ email, password: v })
+                }
               }}
               onBlur={() => {
                 setTouched((t) => ({ ...t, password: true }))
                 runValidation()
               }}
               className={
-                touched.password && errors.password
-                  ? 'input error'
-                  : 'input'
+                touched.password && errors.password ? 'input error' : 'input'
               }
               autoComplete="current-password"
             />
@@ -133,8 +135,7 @@ export default function Login() {
         </form>
 
         <p style={{ marginTop: '1rem' }}>
-          Don't have an account?{' '}
-          <a href="/register">Register here</a>
+          Don't have an account? <a href="/register">Register here</a>
         </p>
       </div>
     </div>

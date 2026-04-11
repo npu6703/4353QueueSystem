@@ -1,142 +1,201 @@
-const request = require('supertest');
-const app = require('../server');
+const request = require('supertest')
+const express = require('express')
 
-describe('Authentication API', () => {
-  const uniqueEmail = `quynh_${Date.now()}@gmail.com`;
+jest.mock('../db', () => ({
+  execute: jest.fn(),
+}))
 
-  test('should register a new user successfully', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
-        name: 'Quynh',
-        email: uniqueEmail,
-        password: '123456',
-        role: 'user'
-      });
+jest.mock('bcrypt', () => ({
+  hash: jest.fn(),
+  compare: jest.fn(),
+}))
 
-    expect(res.statusCode).toBe(201);
-    expect(res.body.success).toBe(true);
-    expect(res.body.message).toBe('User registered successfully');
-    expect(res.body.data).toHaveProperty('email', uniqueEmail);
-    expect(res.body.data).toHaveProperty('role', 'user');
-  });
+const pool = require('../db')
+const bcrypt = require('bcrypt')
+const authRoutes = require('../routes/auth')
 
-  test('should return 400 when required fields are missing', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
-        name: 'Quynh',
-        email: 'missingpassword@gmail.com',
-        role: 'user'
-      });
+const app = express()
+app.use(express.json())
+app.use('/api/auth', authRoutes)
 
-    expect(res.statusCode).toBe(400);
-    expect(res.body.success).toBe(false);
-    expect(res.body.message).toBe('All fields are required');
-  });
+describe('Auth Routes', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
 
-  test('should return 409 when email already exists', async () => {
-    const duplicateEmail = `duplicate_${Date.now()}@gmail.com`;
+  describe('POST /api/auth/register', () => {
+    test('should register user successfully', async () => {
+      pool.execute
+        .mockResolvedValueOnce([[]]) // email not exists
+        .mockResolvedValueOnce([{ insertId: 1 }]) // insert credentials
+        .mockResolvedValueOnce([{}]) // insert profile
 
-    await request(app)
-      .post('/api/auth/register')
-      .send({
-        name: 'Quynh',
-        email: duplicateEmail,
-        password: '123456',
-        role: 'user'
-      });
+      bcrypt.hash.mockResolvedValue('hashed-password')
 
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
-        name: 'Quynh',
-        email: duplicateEmail,
-        password: '123456',
-        role: 'user'
-      });
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Quynh Vu',
+          email: 'quynh@test.com',
+          password: 'password123',
+          role: 'user',
+          phone: '8325551234',
+        })
 
-    expect(res.statusCode).toBe(409);
-    expect(res.body.success).toBe(false);
-    expect(res.body.message).toBe('Email already exists');
-  });
+      expect(res.statusCode).toBe(201)
+      expect(res.body.success).toBe(true)
+      expect(res.body.data.email).toBe('quynh@test.com')
+      expect(res.body.data.role).toBe('user')
+      expect(bcrypt.hash).toHaveBeenCalledWith('password123', 10)
+    })
 
-  test('should login successfully with correct credentials', async () => {
-    const loginEmail = `login_${Date.now()}@gmail.com`;
+    test('should return 400 when fields are missing', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: 'quynh@test.com',
+          password: 'password123',
+          role: 'user',
+        })
 
-    await request(app)
-      .post('/api/auth/register')
-      .send({
-        name: 'Quynh',
-        email: loginEmail,
-        password: '123456',
-        role: 'user'
-      });
+      expect(res.statusCode).toBe(400)
+      expect(res.body.success).toBe(false)
+      expect(res.body.message).toBe('All fields are required')
+    })
 
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: loginEmail,
-        password: '123456'
-      });
+    test('should return 400 for invalid email', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Quynh Vu',
+          email: 'bad-email',
+          password: 'password123',
+          role: 'user',
+        })
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.message).toBe('Login successful');
-    expect(res.body.data).toHaveProperty('email', loginEmail);
-  });
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Invalid email format')
+    })
 
-  test('should return 401 for invalid password', async () => {
-    const wrongPassEmail = `wrongpass_${Date.now()}@gmail.com`;
+    test('should return 400 for invalid role', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Quynh Vu',
+          email: 'quynh@test.com',
+          password: 'password123',
+          role: 'manager',
+        })
 
-    await request(app)
-      .post('/api/auth/register')
-      .send({
-        name: 'Quynh',
-        email: wrongPassEmail,
-        password: '123456',
-        role: 'user'
-      });
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Role must be user or admin')
+    })
 
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: wrongPassEmail,
-        password: 'wrongpass'
-      });
+    test('should return 409 if email already exists', async () => {
+      pool.execute.mockResolvedValueOnce([[{ user_id: 1 }]])
 
-    expect(res.statusCode).toBe(401);
-    expect(res.body.success).toBe(false);
-    expect(res.body.message).toBe('Invalid email or password');
-  });
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Quynh Vu',
+          email: 'quynh@test.com',
+          password: 'password123',
+          role: 'user',
+        })
 
-  test('should fail for invalid email format', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
-        name: 'Test',
-        email: 'invalid-email',
-        password: '123456',
-        role: 'user'
-      });
+      expect(res.statusCode).toBe(409)
+      expect(res.body.message).toBe('Email already exists')
+    })
+  })
 
-    expect(res.statusCode).toBe(400);
-    expect(res.body.success).toBe(false);
-    expect(res.body.message).toBe('Invalid email format');
-  });
+  describe('POST /api/auth/login', () => {
+    test('should login successfully', async () => {
+      pool.execute.mockResolvedValueOnce([[
+        {
+          user_id: 1,
+          email: 'quynh@test.com',
+          password: 'hashed-password',
+          role: 'user',
+          full_name: 'Quynh Vu',
+          phone: '8325551234',
+        },
+      ]])
 
-  test('should fail for invalid role', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
-        name: 'Test',
-        email: `role_${Date.now()}@gmail.com`,
-        password: '123456',
-        role: 'guest'
-      });
+      bcrypt.compare.mockResolvedValue(true)
 
-    expect(res.statusCode).toBe(400);
-    expect(res.body.success).toBe(false);
-    expect(res.body.message).toBe('Role must be user or admin');
-  });
-});
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'quynh@test.com',
+          password: 'password123',
+        })
+
+      expect(res.statusCode).toBe(200)
+      expect(res.body.success).toBe(true)
+      expect(res.body.data.email).toBe('quynh@test.com')
+      expect(res.body.data.isAdmin).toBe(false)
+    })
+
+    test('should return 400 when email or password missing', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'quynh@test.com',
+        })
+
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Email and password are required')
+    })
+
+    test('should return 400 for invalid email format', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'bad-email',
+          password: 'password123',
+        })
+
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Invalid email format')
+    })
+
+    test('should return 401 when user does not exist', async () => {
+      pool.execute.mockResolvedValueOnce([[]])
+
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'missing@test.com',
+          password: 'password123',
+        })
+
+      expect(res.statusCode).toBe(401)
+      expect(res.body.message).toBe('Invalid email or password')
+    })
+
+    test('should return 401 when password is incorrect', async () => {
+      pool.execute.mockResolvedValueOnce([[
+        {
+          user_id: 1,
+          email: 'quynh@test.com',
+          password: 'hashed-password',
+          role: 'user',
+          full_name: 'Quynh Vu',
+          phone: '',
+        },
+      ]])
+
+      bcrypt.compare.mockResolvedValue(false)
+
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'quynh@test.com',
+          password: 'wrongpass',
+        })
+
+      expect(res.statusCode).toBe(401)
+      expect(res.body.message).toBe('Invalid email or password')
+    })
+  })
+})
