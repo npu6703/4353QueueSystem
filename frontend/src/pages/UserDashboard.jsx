@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getCurrentUser, getServices, getQueueForService } from '../services/localApi'
-import { getQueueStatus, getHistory } from '../services/userApi'
+import { getCurrentUser } from '../services/localApi'
+import { getQueueStatus, getHistory, getServices } from '../services/userApi'
 import '../styles/UserDashboard.css'
 
 export default function UserDashboard() {
@@ -11,7 +11,7 @@ export default function UserDashboard() {
   const user = getCurrentUser()
 
   useEffect(() => {
-    setServices(getServices())
+    getServices().then(setServices).catch(() => setServices([]))
     if (!user) return
     getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
     getHistory(user.id).then(setHistory).catch(() => setHistory([]))
@@ -23,10 +23,6 @@ export default function UserDashboard() {
 
   const openServices = services.filter(s => s.open)
   const activeService = status ? services.find(s => s.id === status.serviceId) : null
-
-  function getQueueLength(serviceId) {
-    return getQueueForService(serviceId).length
-  }
 
   return (
     <div className="ud-page">
@@ -75,7 +71,7 @@ export default function UserDashboard() {
               <div className="ud-svc-row" key={s.id}>
                 <div className="ud-svc-info">
                   <span className="ud-svc-name">{s.name}</span>
-                  <span className="ud-svc-meta">{s.description} &middot; {s.expected} min &middot; {getQueueLength(s.id)} in queue</span>
+                  <span className="ud-svc-meta">{s.description} &middot; {s.expected} min avg</span>
                 </div>
                 <span className={`ud-status-tag ${s.open ? 'open' : 'closed'}`}>
                   <span className="ud-status-dot"></span>

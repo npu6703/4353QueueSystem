@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getServices, getCurrentUser, getQueueForService } from '../services/localApi'
-import { joinQueue, leaveQueue, getQueueStatus } from '../services/userApi'
+import { getCurrentUser } from '../services/localApi'
+import { joinQueue, leaveQueue, getQueueStatus, getServices } from '../services/userApi'
 import '../styles/JoinQueue.css'
 
 export default function JoinQueue() {
@@ -11,7 +11,7 @@ export default function JoinQueue() {
   const user = getCurrentUser()
 
   useEffect(() => {
-    setServices(getServices())
+    getServices().then(setServices).catch(() => setServices([]))
     if (!user) return
     getQueueStatus(user.id).then(setCurrentStatus).catch(() => setCurrentStatus(null))
     const interval = setInterval(() => {
@@ -25,14 +25,7 @@ export default function JoinQueue() {
       const s = await getQueueStatus(user.id).catch(() => null)
       setCurrentStatus(s)
     }
-    setServices(getServices())
-  }
-
-  function getQueueInfo(serviceId) {
-    const q = getQueueForService(serviceId)
-    const svc = services.find(s => s.id === serviceId)
-    const waitMinutes = q.length * (svc?.expected || 10)
-    return { length: q.length, waitMinutes }
+    getServices().then(setServices).catch(() => {})
   }
 
   function showToast(message, type = 'success') {
@@ -66,7 +59,6 @@ export default function JoinQueue() {
     }
   }
 
-  const selectedInfo = selected ? getQueueInfo(selected) : null
   const selectedService = selected ? services.find(s => s.id === selected) : null
   const userInSelected = currentStatus?.serviceId === selected
 
@@ -87,7 +79,6 @@ export default function JoinQueue() {
       {/* Service cards */}
       <div className="jq-grid">
         {services.map(s => {
-          const info = getQueueInfo(s.id)
           const isDisabled = !s.open
           return (
             <div
@@ -106,7 +97,6 @@ export default function JoinQueue() {
                   {s.open ? 'Open' : 'Closed'}
                 </span>
                 <span className="jq-meta-item"><strong>{s.expected}</strong> min avg</span>
-                <span className="jq-meta-item"><strong>{info.length}</strong> in queue</span>
                 <span className={`jq-priority-tag ${s.priority}`}>{s.priority}</span>
               </div>
             </div>
@@ -120,17 +110,17 @@ export default function JoinQueue() {
           <h3>{selectedService ? selectedService.name : 'Queue Details'}</h3>
         </div>
         <div className="jq-action-body">
-          {selected && selectedInfo ? (
+          {selected && selectedService ? (
             <>
               <div className="jq-wait-box">
                 <div className="jq-wait-number">
-                  <strong>{selectedInfo.waitMinutes}</strong>
+                  <strong>{userInSelected ? currentStatus.expectedWait : selectedService.expected}</strong>
                   <span>min</span>
                 </div>
                 <div className="jq-wait-details">
                   <span className="jq-wait-title">Estimated Wait</span>
-                  <span className="jq-wait-value">{selectedInfo.waitMinutes} minutes</span>
-                  <span className="jq-wait-sub">{selectedInfo.length} {selectedInfo.length === 1 ? 'person' : 'people'} in queue</span>
+                  <span className="jq-wait-value">{userInSelected ? currentStatus.expectedWait : selectedService.expected} minutes</span>
+                  {userInSelected && <span className="jq-wait-sub">{currentStatus.total} {currentStatus.total === 1 ? 'person' : 'people'} in queue</span>}
                 </div>
               </div>
               <div className="jq-btns">

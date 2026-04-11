@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getCurrentUser, getServices } from '../services/localApi'
-import { getQueueStatus, leaveQueue } from '../services/userApi'
+import { getCurrentUser } from '../services/localApi'
+import { getQueueStatus, leaveQueue, getServices } from '../services/userApi'
 import '../styles/QueueStatus.css'
 
 export default function QueueStatus() {
@@ -10,7 +10,7 @@ export default function QueueStatus() {
   const user = getCurrentUser()
 
   useEffect(() => {
-    setServices(getServices())
+    getServices().then(setServices).catch(() => setServices([]))
     if (!user) return
     getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
     const interval = setInterval(() => {

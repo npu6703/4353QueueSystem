@@ -30,3 +30,7 @@ export async function getQueueStatus(userId) {
 export async function getHistory(userId) {
   return request(`/api/history?userId=${encodeURIComponent(userId)}`)
 }
+
+export async function getServices() {
+  return request('/api/services')
+}
