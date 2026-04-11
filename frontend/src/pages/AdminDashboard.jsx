@@ -168,7 +168,7 @@ export default function AdminDashboard() {
             <tbody>
               {recentHistory.map(h => (
                 <tr key={h.id}>
-                  <td>{new Date(h.date).toLocaleString()}</td>
+                  <td>{new Date(h.joinedAt).toLocaleString()}</td>
                   <td className="service-name">{h.userName || h.userId}</td>
                   <td>{h.serviceName || h.serviceId}</td>
                   <td>

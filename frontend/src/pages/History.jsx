@@ -30,7 +30,7 @@ export default function History() {
 
   function outcomeClass(outcome) {
     if (outcome === 'served') return 'served'
-    if (outcome === 'left') return 'left'
+    if (outcome === 'cancelled') return 'cancelled'
     return 'cancelled'
   }
 
@@ -38,9 +38,9 @@ export default function History() {
     ? history
     : history.filter(h => h.outcome === filter)
 
-  const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date))
+  const sorted = [...filtered].sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
 
-  const counts = { all: history.length, served: 0, left: 0 }
+  const counts = { all: history.length, served: 0, cancelled: 0 }
   history.forEach(h => { if (counts[h.outcome] !== undefined) counts[h.outcome]++ })
 
   if (history.length === 0) {
@@ -76,7 +76,7 @@ export default function History() {
       <div className="hist-card">
         {/* Filters */}
         <div className="hist-filters">
-          {['all', 'served', 'left'].map(f => (
+          {['all', 'served', 'cancelled'].map(f => (
             <button
               key={f}
               className={`hist-filter-btn ${filter === f ? 'active' : ''}`}
@@ -99,7 +99,7 @@ export default function History() {
             </thead>
             <tbody>
               {sorted.map(h => {
-                const { date, time } = formatDate(h.date)
+                const { date, time } = formatDate(h.joinedAt)
                 return (
                   <tr key={h.id}>
                     <td data-label="Date">
@@ -109,7 +109,7 @@ export default function History() {
                       </div>
                     </td>
                     <td data-label="Service">
-                      <span className="hist-svc-name">{svcName(h.serviceId)}</span>
+                      <span className="hist-svc-name">{h.serviceName}</span>
                     </td>
                     <td data-label="Outcome">
                       <span className={`hist-outcome ${outcomeClass(h.outcome)}`}>
