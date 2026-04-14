@@ -14,7 +14,7 @@ app.use(express.json());
 
 app.use(queueRoutes);
 app.use(adminRoutes);
-app.use(authRoutes);
+app.use('/api/auth', authRoutes);
 
 app.use(serviceRoutes);
 app.use(adminQueueRoutes);
