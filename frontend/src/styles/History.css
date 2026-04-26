@@ -144,9 +144,9 @@
   font-weight: 600;
 }
 
-.hist-outcome.served    { background: #ecfdf5; color: #065f46; }
-.hist-outcome.left      { background: #fef2f2; color: var(--danger); }
-.hist-outcome.cancelled { background: #f3f4f6; color: var(--text-muted); }
+.hist-outcome.served    { background: var(--green-subtle); color: var(--green-dark); }
+.hist-outcome.left      { background: var(--danger-bg);   color: var(--danger); }
+.hist-outcome.cancelled { background: #f3f4f6;            color: var(--text-muted); }
 
 .hist-outcome-dot {
   width: 6px;

@@ -46,7 +46,7 @@
 }
 
 .ud-stat-card.green  { border-top-color: var(--green-dark); }
-.ud-stat-card.amber  { border-top-color: var(--amber); }
+.ud-stat-card.amber  { border-top-color: #f59e0b; }
 .ud-stat-card.blue   { border-top-color: #3b82f6; }
 .ud-stat-card.muted  { border-top-color: var(--text-muted); }
 
@@ -159,12 +159,12 @@
 }
 
 .ud-status-tag.open {
-  background: #ecfdf5;
-  color: #065f46;
+  background: var(--green-subtle);
+  color: var(--green-dark);
 }
 
 .ud-status-tag.closed {
-  background: #fef2f2;
+  background: var(--danger-bg);
   color: var(--danger);
 }
 
@@ -175,7 +175,7 @@
   display: inline-block;
 }
 
-.ud-status-tag.open .ud-status-dot  { background: #10b981; }
+.ud-status-tag.open .ud-status-dot  { background: var(--green-dark); }
 .ud-status-tag.closed .ud-status-dot { background: var(--danger); }
 
 /* ── Queue status panel ── */
@@ -234,13 +234,13 @@
 }
 
 .ud-queue-chip.waiting {
-  background: #fef9c3;
-  color: #92400e;
+  background: var(--info-bg);
+  color: var(--info);
 }
 
 .ud-queue-chip.almost {
-  background: #ecfdf5;
-  color: #065f46;
+  background: var(--amber-bg);
+  color: var(--amber);
 }
 
 .ud-queue-link {
@@ -324,9 +324,9 @@
   flex-shrink: 0;
 }
 
-.ud-nav-icon.join   { background: #ecfdf5; color: #065f46; }
-.ud-nav-icon.status { background: #eff6ff; color: #1d4ed8; }
-.ud-nav-icon.hist   { background: #fef9c3; color: #92400e; }
+.ud-nav-icon.join   { background: var(--green-subtle); color: var(--green-dark); }
+.ud-nav-icon.status { background: var(--info-bg);     color: var(--info); }
+.ud-nav-icon.hist   { background: var(--amber-bg);    color: var(--amber); }
 
 .ud-nav-text {
   display: flex;

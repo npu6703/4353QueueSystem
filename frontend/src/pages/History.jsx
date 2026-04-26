@@ -111,7 +111,7 @@ export default function History() {
                     <td data-label="Service">
                       <span className="hist-svc-name">{h.serviceName}</span>
                     </td>
-                    <td data-label="Outcome">
+                    <td data-label="Outcome">``
                       <span className={`hist-outcome ${outcomeClass(h.outcome)}`}>
                         <span className="hist-outcome-dot"></span>
                         {h.outcome.charAt(0).toUpperCase() + h.outcome.slice(1)}

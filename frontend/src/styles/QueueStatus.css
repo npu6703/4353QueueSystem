@@ -135,8 +135,8 @@
   font-weight: 600;
 }
 
-.qs-chip.waiting { background: #fef9c3; color: #92400e; }
-.qs-chip.almost  { background: #ecfdf5; color: #065f46; }
+.qs-chip.waiting { background: var(--info-bg);     color: var(--info); }
+.qs-chip.almost  { background: var(--amber-bg);    color: var(--amber); }
 
 .qs-chip-dot {
   width: 6px;
@@ -145,8 +145,8 @@
   display: inline-block;
 }
 
-.qs-chip.waiting .qs-chip-dot { background: #f59e0b; }
-.qs-chip.almost .qs-chip-dot  { background: #10b981; }
+.qs-chip.waiting .qs-chip-dot { background: var(--info); }
+.qs-chip.almost .qs-chip-dot  { background: var(--amber); }
 
 /* ── Actions ── */
 .qs-actions {

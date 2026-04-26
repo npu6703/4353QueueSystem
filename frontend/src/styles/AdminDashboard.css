@@ -43,7 +43,7 @@
 .admin-subtitle {
   margin: 0.25rem 0 0 0;
   font-size: clamp(0.8rem, 1vw, 0.95rem);
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .admin-nav-buttons {
@@ -114,7 +114,7 @@
 
 .admin-btn-danger {
   background: #fef2f2;
-  color: #b91c1c;
+  color: var(--danger);
   border: 1.5px solid #fca5a5;
   padding: 0.35rem 0.85rem;
 }
@@ -203,7 +203,7 @@
 
 .stat-label {
   font-size: clamp(0.65rem, 0.8vw, 0.82rem);
-  color: #6b7280;
+  color: var(--text-muted);
   margin-top: 0.4rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -251,7 +251,7 @@
   font-size: clamp(0.65rem, 0.75vw, 0.78rem);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -281,7 +281,7 @@
 }
 
 .service-desc {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: clamp(0.75rem, 0.9vw, 0.88rem);
   max-width: 200px;
   white-space: nowrap;
@@ -294,14 +294,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--green-light), #a8e090);
-  color: var(--green-dark);
+  background: var(--green-dark);
+  color: #ffffff;
   font-weight: 700;
   font-size: clamp(0.75rem, 0.9vw, 0.88rem);
   width: clamp(1.6rem, 2vw, 2.1rem);
   height: clamp(1.6rem, 2vw, 2.1rem);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(52, 121, 40, 0.15);
+  box-shadow: 0 1px 3px rgba(52, 121, 40, 0.25);
   transition: transform 0.2s ease;
 }
 
@@ -319,8 +319,8 @@
   transition: all 0.2s ease;
 }
 
-.status-open { background: #dcfce7; color: #166534; }
-.status-closed { background: #fee2e2; color: #991b1b; }
+.status-open   { background: var(--green-subtle); color: var(--green-dark); }
+.status-closed { background: var(--danger-bg);   color: var(--danger); }
 
 .priority-badge {
   display: inline-block;
@@ -333,9 +333,9 @@
   transition: all 0.2s ease;
 }
 
-.priority-low { background: #f0fdf4; color: #15803d; }
-.priority-medium { background: #fefce8; color: #a16207; }
-.priority-high { background: #fef2f2; color: #b91c1c; }
+.priority-low    { background: var(--green-subtle); color: var(--green-dark); }
+.priority-medium { background: var(--amber-bg);    color: var(--amber); }
+.priority-high   { background: var(--danger-bg);   color: var(--danger); }
 
 /* ==================== Active Queue Cards ==================== */
 .admin-section-title {

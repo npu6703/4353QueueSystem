@@ -114,12 +114,12 @@ export default function JoinQueue() {
             <>
               <div className="jq-wait-box">
                 <div className="jq-wait-number">
-                  <strong>{userInSelected ? currentStatus.expectedWait : selectedService.expected}</strong>
+                  <strong>{userInSelected ? Math.round(currentStatus.expectedWait) : selectedService.expected}</strong>
                   <span>min</span>
                 </div>
                 <div className="jq-wait-details">
                   <span className="jq-wait-title">Estimated Wait</span>
-                  <span className="jq-wait-value">{userInSelected ? currentStatus.expectedWait : selectedService.expected} minutes</span>
+                  <span className="jq-wait-value">{userInSelected ? Math.round(currentStatus.expectedWait) : selectedService.expected} minutes</span>
                   {userInSelected && <span className="jq-wait-sub">{currentStatus.total} {currentStatus.total === 1 ? 'person' : 'people'} in queue</span>}
                 </div>
               </div>

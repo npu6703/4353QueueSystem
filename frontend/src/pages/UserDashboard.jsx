@@ -45,7 +45,7 @@ export default function UserDashboard() {
         </div>
         <div className="ud-stat-card blue">
           <div className="ud-stat-label">Est. Wait</div>
-          <div className="ud-stat-value">{status ? `${status.expectedWait} min` : '—'}</div>
+          <div className="ud-stat-value">{status ? `${Math.round(status.expectedWait)} min` : '—'}</div>
           <div className="ud-stat-note">{status ? 'approximate' : 'N/A'}</div>
         </div>
         <div className="ud-stat-card muted">
@@ -94,7 +94,7 @@ export default function UserDashboard() {
                   <div className="ud-queue-pos-circle">#{status.position}</div>
                   <div className="ud-queue-pos-text">
                     <strong>{activeService?.name || status.serviceId}</strong>
-                    <span>Estimated wait: {status.expectedWait} min</span>
+                    <span>Estimated wait: {Math.round(status.expectedWait)} min</span>
                   </div>
                 </div>
                 <span className={`ud-queue-chip ${status.position === 1 ? 'almost' : 'waiting'}`}>

@@ -79,7 +79,9 @@ router.post('/api/admin/services', checkAdmin, async (req, res) => {
       'INSERT INTO Service (name, description, expected_duration, priority) VALUES (?, ?, ?, ?)',
       [name.trim(), description.trim(), Number(expected), priority]
     )
-    return res.status(201).json({ id: result.insertId, name: name.trim(), description: description.trim(), expected: Number(expected), priority, open: true })
+    const serviceId = result.insertId
+    await db.query('INSERT INTO Queue (service_id) VALUES (?)', [serviceId])
+    return res.status(201).json({ id: serviceId, name: name.trim(), description: description.trim(), expected: Number(expected), priority, open: true })
   } catch (err) {
     return res.status(500).json({ error: 'Failed to create service' })
   }

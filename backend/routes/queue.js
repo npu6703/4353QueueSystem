@@ -157,6 +157,15 @@ router.delete('/api/queue/leave', async (req, res) => {
   }
 });
 
+
+const PRIORITY_WEIGHTS = { high: 30, medium: 15, low: 0 };
+const AGING_FACTOR = 1;
+
+function calcScore(priority, joinTime) {
+  const waitedMinutes = (Date.now() - new Date(joinTime).getTime()) / 60000;
+  return (PRIORITY_WEIGHTS[priority] || 0) + waitedMinutes * AGING_FACTOR;
+}
+
 // GET /api/queue/status?userId=...
 router.get('/api/queue/status', async (req, res) => {
   try {
@@ -167,7 +176,7 @@ router.get('/api/queue/status', async (req, res) => {
 
     // Find the user's active queue entry with service info
     const [entries] = await db.query(
-      `SELECT qe.entry_id, qe.position, qe.priority, qe.join_time,
+      `SELECT qe.entry_id, qe.priority, qe.join_time,
               qe.queue_id, s.service_id, s.name AS serviceName, s.expected_duration
        FROM QueueEntry qe
        JOIN Queue q ON qe.queue_id = q.queue_id
@@ -183,18 +192,42 @@ router.get('/api/queue/status', async (req, res) => {
 
     const entry = entries[0];
 
-    // Count total waiting entries in this queue
-    const [[{ total }]] = await db.query(
-      "SELECT COUNT(*) AS total FROM QueueEntry WHERE queue_id = ? AND status = 'waiting'",
+    // Fetch every waiting entry in the same queue so we can compute position
+    // dynamically — the admin reorder/priority changes only affect join_time
+    // and priority, so reading the stored position column would give stale results.
+    const [allWaiting] = await db.query(
+      `SELECT entry_id, priority, join_time
+       FROM QueueEntry WHERE queue_id = ? AND status = 'waiting'`,
       [entry.queue_id]
     );
 
-    const expectedWait = (entry.position - 1) * (entry.expected_duration || 10);
+    // Sort by the same algorithm used in adminQueue.js
+    const sorted = [...allWaiting].sort((a, b) => {
+      const diff = calcScore(b.priority, b.join_time) - calcScore(a.priority, a.join_time);
+      return diff !== 0 ? diff : new Date(a.join_time) - new Date(b.join_time);
+    });
+
+    // Use Number() cast to guard against any int/string type mismatch from the DB driver
+    const position = sorted.findIndex(e => Number(e.entry_id) === Number(entry.entry_id)) + 1;
+    const total = allWaiting.length;
+    const duration = entry.expected_duration || 10;
+
+    // Total expected wait if the user just joined at their current position.
+    const totalExpected = (position - 1) * duration;
+
+    // Subtract how long this user has already been waiting so the timer counts
+    // down as time passes, even when nobody joins or leaves.
+    // NOTE: admin boost swaps join_times between real entries (still realistic
+    // timestamps), so this stays accurate. movetotop only backdates the TARGET
+    // user's join_time — but that user ends up at position 1 (totalExpected=0)
+    // so the subtraction is harmless there.
+    const minutesWaited = (Date.now() - new Date(entry.join_time).getTime()) / 60000;
+    const expectedWait = Math.max(0, Math.round(totalExpected - minutesWaited));
 
     return res.status(200).json({
       serviceId: entry.service_id,
       serviceName: entry.serviceName,
-      position: entry.position,
+      position,
       total,
       priority: entry.priority,
       joinedAt: entry.join_time,

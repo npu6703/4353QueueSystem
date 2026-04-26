@@ -80,15 +80,23 @@ export default function Register() {
     }
   }
 
-  const canSubmit =
-    name.trim() &&
-    phoneDigits &&
-    email.trim() &&
-    password &&
-    !errors.name &&
-    !errors.phone &&
-    !errors.email &&
-    !errors.password
+  // Compute button state from raw values, not from the errors display state.
+  // errors is only updated when a field is blurred (or onChange after blur),
+  // so checking !errors.password would leave the button disabled while the user
+  // is actively typing in the last field before it has been blurred.
+  const canSubmit = useMemo(() => {
+    const digits = digitsOnly(phone)
+    return (
+      !validateRequired(name, 'Name') &&
+      !validateMaxLen(name, 50, 'Name') &&
+      !validateRequired(phone, 'Phone number') &&
+      !validatePhoneUS(digits) &&
+      !validateRequired(email, 'Email') &&
+      !validateEmail(email) &&
+      !validateRequired(password, 'Password') &&
+      !validatePassword(password)
+    )
+  }, [name, phone, email, password])
 
   return (
     <div className="auth-page">

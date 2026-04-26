@@ -108,7 +108,7 @@ export default function QueueStatus() {
           </div>
           <div className="qs-row">
             <span className="qs-row-label">Estimated wait</span>
-            <span className="qs-row-value">{status.expectedWait} min</span>
+            <span className="qs-row-value">{Math.round(status.expectedWait)} min</span>
           </div>
           <div className="qs-row">
             <span className="qs-row-label">Status</span>
