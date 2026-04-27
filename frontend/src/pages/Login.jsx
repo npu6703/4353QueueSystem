@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { validateEmail, validatePassword } from '../utils/validation'
+import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function Login() {
   const nav = useNavigate()
@@ -8,6 +9,8 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [err, setErr] = useState('')
+  const [remember, setRemember] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const [errors, setErrors] = useState({
     email: '',
@@ -47,18 +50,19 @@ export default function Login() {
       const json = await res.json()
 
       if (!res.ok) {
-        throw new Error(json.message || 'Login failed')
+        throw new Error(json.message || 'Sign in failed')
       }
 
-      localStorage.setItem('qs_current', JSON.stringify(json.data))
-
-      if (json.data.isAdmin) {
-        nav('/admin')
+      if (remember) {
+        localStorage.setItem('qs_current', JSON.stringify(json.data))
       } else {
-        nav('/')
+        sessionStorage.setItem('qs_current', JSON.stringify(json.data))
       }
+
+      if (json.data.isAdmin) nav('/admin')
+      else nav('/')
     } catch (e) {
-      setErr(e.message || 'Login failed')
+      setErr(e.message || 'Sign in failed')
     }
   }
 
@@ -67,31 +71,37 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <h2>Login</h2>
-        <p>Sign in to your QueueSmart account</p>
+        <div className="auth-icon">
+          <User size={36} />
+        </div>
+
+        <h2>Welcome back</h2>
+        <p className="auth-subtitle">Sign in to your QueueSmart account</p>
 
         <form onSubmit={submit} noValidate>
           <div className="form-row">
             <label>Email *</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => {
-                const v = e.target.value
-                setEmail(v)
-                if (touched.email) {
-                  runValidation({ email: v, password })
-                }
-              }}
-              onBlur={() => {
-                setTouched((t) => ({ ...t, email: true }))
-                runValidation()
-              }}
-              className={
-                touched.email && errors.email ? 'input error' : 'input'
-              }
-              autoComplete="email"
-            />
+
+            <div className="input-wrap">
+              <Mail className="field-icon" size={20} />
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setEmail(v)
+                  if (touched.email) runValidation({ email: v, password })
+                }}
+                onBlur={() => {
+                  setTouched((t) => ({ ...t, email: true }))
+                  runValidation()
+                }}
+                className={touched.email && errors.email ? 'input error' : 'input'}
+                autoComplete="email"
+              />
+            </div>
+
             {touched.email && errors.email && (
               <div className="error-text">{errors.email}</div>
             )}
@@ -99,43 +109,62 @@ export default function Login() {
 
           <div className="form-row">
             <label>Password *</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => {
-                const v = e.target.value
-                setPassword(v)
-                if (touched.password) {
-                  runValidation({ email, password: v })
-                }
-              }}
-              onBlur={() => {
-                setTouched((t) => ({ ...t, password: true }))
-                runValidation()
-              }}
-              className={
-                touched.password && errors.password ? 'input error' : 'input'
-              }
-              autoComplete="current-password"
-            />
+
+            <div className="input-wrap">
+              <Lock className="field-icon" size={20} />
+
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setPassword(v)
+                  if (touched.password) runValidation({ email, password: v })
+                }}
+                onBlur={() => {
+                  setTouched((t) => ({ ...t, password: true }))
+                  runValidation()
+                }}
+                className={touched.password && errors.password ? 'input error' : 'input'}
+                autoComplete="current-password"
+              />
+
+              <button
+                type="button"
+                className="eye-button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+
             {touched.password && errors.password && (
               <div className="error-text">{errors.password}</div>
             )}
           </div>
 
+          <div className="remember-row">
+            <label>
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={() => setRemember(!remember)}
+              />
+              Remember me
+            </label>
+          </div>
+
           {err && <div className="error-text">{err}</div>}
 
-          <button
-            className="primary"
-            type="submit"
-            disabled={!canSubmit}
-          >
-            Login
+          <button className="primary" type="submit" disabled={!canSubmit}>
+            Sign in
           </button>
         </form>
 
-        <p style={{ marginTop: '1rem' }}>
-          Don't have an account? <a href="/register">Register here</a>
+        <p className="register-link">
+          New here? <a href="/register">Create an account</a>
         </p>
       </div>
     </div>

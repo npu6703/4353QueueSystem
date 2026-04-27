@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import './App.css'
 import './index.css'
 import './styles/theme.css'
+import './App.css'
 import Navbar from './components/Navbar'
 import NotificationCenter from './components/NotificationCenter'
 import Login from './pages/Login'
