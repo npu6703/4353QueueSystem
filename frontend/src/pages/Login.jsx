@@ -9,7 +9,6 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [err, setErr] = useState('')
-  const [remember, setRemember] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
   const [errors, setErrors] = useState({
@@ -53,11 +52,7 @@ export default function Login() {
         throw new Error(json.message || 'Sign in failed')
       }
 
-      if (remember) {
-        localStorage.setItem('qs_current', JSON.stringify(json.data))
-      } else {
-        sessionStorage.setItem('qs_current', JSON.stringify(json.data))
-      }
+      sessionStorage.setItem('qs_current', JSON.stringify(json.data))
 
       if (json.data.isAdmin) nav('/admin')
       else nav('/')
@@ -143,17 +138,6 @@ export default function Login() {
             {touched.password && errors.password && (
               <div className="error-text">{errors.password}</div>
             )}
-          </div>
-
-          <div className="remember-row">
-            <label>
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={() => setRemember(!remember)}
-              />
-              Remember me
-            </label>
           </div>
 
           {err && <div className="error-text">{err}</div>}

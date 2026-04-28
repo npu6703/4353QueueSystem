@@ -47,6 +47,9 @@ export default function Navbar() {
   }, [])
 
   function doLogout() {
+    sessionStorage.removeItem('qs_current')
+    localStorage.removeItem('qs_current')
+
     logout()
     nav('/login')
   }

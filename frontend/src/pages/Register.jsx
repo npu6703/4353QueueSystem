@@ -99,10 +99,10 @@ export default function Register() {
   }, [name, phone, email, password])
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
+    <div className="auth-page register-page">
+      <div className="auth-card register-card">
         <h2>Register</h2>
-        <p>Create your QueueSmart account</p>
+        <p className="register-subtitle">Create your QueueSmart account</p>
 
         <form onSubmit={submit} noValidate>
           {/* name */}
