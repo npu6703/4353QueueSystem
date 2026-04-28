@@ -466,6 +466,20 @@ button[disabled] {
   filter: grayscale(30%);
 }
 
+/* Primary button disabled — same green but darkened with a black overlay,
+   white text faded out. Matches the Instagram/Facebook "grayed-out" pattern. */
+button.primary:disabled,
+button.primary[disabled] {
+  background: linear-gradient(135deg, #254f1c, #2d5a24) !important;
+  color: rgba(255, 255, 255, 0.603) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* ==================== Auth Pages ==================== */
 .auth-page {
   display: flex;

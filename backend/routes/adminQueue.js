@@ -274,8 +274,10 @@ router.put('/api/admin/queues/:serviceId/movetotop/:userId', checkAdmin, async (
 
     // Backdate join_time so this entry scores above current #1, everyone else shifts down one
     const topScore = calcEffectiveScore(sorted[0])
-    const neededWaitMin = topScore - PRIORITY_WEIGHTS[entry.priority] + 1
-    const newJoinTime = new Date(Date.now() - neededWaitMin * 60000).toISOString()
+    const neededWaitMin = topScore - (PRIORITY_WEIGHTS[entry.priority] || 0) + 1
+    // Pass a Date object — mysql2 converts it to MySQL's TIMESTAMP format correctly.
+    // Using toISOString() produces '...Z' which MySQL's TIMESTAMP column rejects.
+    const newJoinTime = new Date(Date.now() - neededWaitMin * 60000)
 
     await db.query('UPDATE QueueEntry SET join_time = ? WHERE entry_id = ?', [newJoinTime, entry.entry_id])
 

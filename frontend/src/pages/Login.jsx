@@ -66,7 +66,7 @@ export default function Login() {
     }
   }
 
-  const canSubmit = email.trim() && password
+  const canSubmit = !validateEmail(email) && !validatePassword(password)
 
   return (
     <div className="auth-page">

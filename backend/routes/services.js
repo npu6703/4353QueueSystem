@@ -124,13 +124,37 @@ return res.status(200).json(updated[0])
 
 // DELETE /api/admin/services/:id — delete service (admin)
 router.delete('/api/admin/services/:id', checkAdmin, async (req, res) => {
+  const conn = await db.getConnection()
   try {
-    const [rows] = await db.query('SELECT * FROM Service WHERE service_id = ?', [req.params.id])
-    if (rows.length === 0) return res.status(404).json({ error: 'Service not found' })
+    const [rows] = await conn.query('SELECT * FROM Service WHERE service_id = ?', [req.params.id])
+    if (rows.length === 0) {
+      conn.release()
+      return res.status(404).json({ error: 'Service not found' })
+    }
 
-    await db.query('DELETE FROM Service WHERE service_id = ?', [req.params.id])
+    await conn.beginTransaction()
+
+    // Find all queues for this service
+    const [queues] = await conn.query('SELECT queue_id FROM Queue WHERE service_id = ?', [req.params.id])
+    const queueIds = queues.map(q => q.queue_id)
+
+    // Delete QueueEntry rows first (child of Queue)
+    if (queueIds.length > 0) {
+      await conn.query('DELETE FROM QueueEntry WHERE queue_id IN (?)', [queueIds])
+    }
+
+    // Delete Queue rows (child of Service)
+    await conn.query('DELETE FROM Queue WHERE service_id = ?', [req.params.id])
+
+    // Now safe to delete the Service
+    await conn.query('DELETE FROM Service WHERE service_id = ?', [req.params.id])
+
+    await conn.commit()
+    conn.release()
     return res.status(200).json({ success: true })
   } catch (err) {
+    await conn.rollback().catch(() => {})
+    conn.release()
     return res.status(500).json({ error: 'Failed to delete service' })
   }
 })
