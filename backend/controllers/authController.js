@@ -6,9 +6,9 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // REGISTER
 const register = async (req, res) => {
   try {
-    const { name, email, password, role, phone } = req.body;
+    const { name, email, password, phone } = req.body;
 
-    if (!name || !email || !password || !role) {
+    if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
         message: 'All fields are required'
@@ -19,7 +19,6 @@ const register = async (req, res) => {
       typeof name !== 'string' ||
       typeof email !== 'string' ||
       typeof password !== 'string' ||
-      typeof role !== 'string' ||
       (phone !== undefined && typeof phone !== 'string')
     ) {
       return res.status(400).json({
@@ -30,7 +29,10 @@ const register = async (req, res) => {
 
     const cleanName = name.trim();
     const cleanEmail = email.trim().toLowerCase();
-    const cleanRole = role.trim().toLowerCase();
+    // Role is NOT taken from the request body. Self-registration always
+    // creates a regular user; admins must be promoted directly in the database
+    // (or via a future admin-only endpoint) to prevent privilege escalation.
+    const cleanRole = 'user';
     const cleanPhone = phone ? phone.trim() : '';
 
     if (cleanName.length < 2 || cleanName.length > 50) {
@@ -58,13 +60,6 @@ const register = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Password must be between 4 and 50 characters'
-      });
-    }
-
-    if (cleanRole !== 'user' && cleanRole !== 'admin') {
-      return res.status(400).json({
-        success: false,
-        message: 'Role must be user or admin'
       });
     }
 

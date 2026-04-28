@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { getCurrentUser, logout, getNotifications, markNotifsRead } from '../services/localApi'
+import { getCurrentUser, logout } from '../services/localApi'
+import { getNotifications as getUserNotifs, markNotificationsRead as markUserRead } from '../services/userApi'
+import { getNotifications as getAdminNotifs, markNotificationsRead as markAdminRead } from '../services/adminApi'
 
 export default function Navbar() {
   const user = getCurrentUser()
@@ -10,9 +12,29 @@ export default function Navbar() {
   const [notifs, setNotifs] = useState([])
   const dropdownRef = useRef(null)
 
+  const fetchNotifs = useCallback(async () => {
+    if (!user?.id) {
+      setNotifs([])
+      return
+    }
+    try {
+      const list = user.isAdmin ? await getAdminNotifs(user.id) : await getUserNotifs(user.id)
+      setNotifs(Array.isArray(list) ? list : [])
+    } catch (err) {
+      console.error('Failed to load notifications:', err)
+      setNotifs([])
+    }
+  }, [user?.id, user?.isAdmin])
+
+  useEffect(() => { fetchNotifs() }, [fetchNotifs, location])
+
+  // Poll for new notifications while logged in so the bell updates without
+  // requiring a page navigation.
   useEffect(() => {
-    setNotifs(getNotifications())
-  }, [location])
+    if (!user?.id) return
+    const interval = setInterval(fetchNotifs, 5000)
+    return () => clearInterval(interval)
+  }, [fetchNotifs, user?.id])
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -29,12 +51,18 @@ export default function Navbar() {
     nav('/login')
   }
 
-  function handleMarkRead() {
-    markNotifsRead()
-    setNotifs(getNotifications())
+  async function handleMarkRead() {
+    if (!user?.id) return
+    try {
+      if (user.isAdmin) await markAdminRead(user.id)
+      else await markUserRead(user.id)
+      await fetchNotifs()
+    } catch (err) {
+      console.error('Failed to mark notifications read:', err)
+    }
   }
 
-  const unreadCount = notifs.filter(n => !n.read).length
+  const unreadCount = notifs.filter(n => n.status !== 'viewed' && !n.read).length
 
   function isActive(path) {
     if (path === '/admin') return location.pathname.startsWith('/admin')
@@ -89,14 +117,18 @@ export default function Navbar() {
                       <div className="notif-empty">No notifications</div>
                     ) : (
                       <ul className="notif-list">
-                        {notifs.map(n => (
-                          <li key={n.id} className={n.read ? 'notif-item read' : 'notif-item'}>
-                            <div className="notif-dot-wrapper">
-                              {!n.read && <span className="notif-dot" />}
-                            </div>
-                            <span className="notif-message">{n.message}</span>
-                          </li>
-                        ))}
+                        {notifs.map(n => {
+                          const id = n.notification_id ?? n.id
+                          const unread = n.status !== 'viewed' && !n.read
+                          return (
+                            <li key={id} className={unread ? 'notif-item' : 'notif-item read'}>
+                              <div className="notif-dot-wrapper">
+                                {unread && <span className="notif-dot" />}
+                              </div>
+                              <span className="notif-message">{n.message}</span>
+                            </li>
+                          )
+                        })}
                       </ul>
                     )}
                   </div>

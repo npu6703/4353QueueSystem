@@ -50,14 +50,15 @@ async function getQueueForService(serviceId) {
 }
 
 async function addNotif(userId, message) {
+  if (!userId) return
   try {
-    if (userId) {
-      await db.query(
-        "INSERT INTO Notification (user_id, message, status) VALUES (?, ?, 'sent')",
-        [userId, message]
-      )
-    }
-  } catch (_) { /* notification failure is non-critical */ }
+    await db.query(
+      "INSERT INTO Notification (user_id, message, status) VALUES (?, ?, 'sent')",
+      [userId, message]
+    )
+  } catch (err) {
+    console.error('Failed to insert notification:', err)
+  }
 }
 
 // GET /api/admin/queues — summary of all service queues
@@ -141,10 +142,19 @@ router.post('/api/admin/queues/:serviceId/serve', checkAdmin, async (req, res) =
     const next = sorted[0]
     await db.query("UPDATE QueueEntry SET status = 'served' WHERE entry_id = ?", [next.entry_id])
 
-    // Notify next 2 in line
-    sorted.slice(1, 3).forEach(async (entry, i) => {
-      await addNotif(entry.user_id, `You are ${i === 0 ? 'next' : 'almost next'} in ${svcs[0].name}!`)
-    })
+    // Notify the user who was just served, plus the next 2 people in line.
+    // Using a real for-loop with await so the response is sent only after the
+    // notifications have actually been written (the previous forEach(async ...)
+    // dropped the awaited promises and returned early).
+    await addNotif(next.user_id, `You have been served for ${svcs[0].name}.`)
+    const upcoming = sorted.slice(1, 3)
+    for (let i = 0; i < upcoming.length; i++) {
+      const entry = upcoming[i]
+      await addNotif(
+        entry.user_id,
+        `You are ${i === 0 ? 'next' : 'almost next'} in ${svcs[0].name}!`
+      )
+    }
 
     return res.status(200).json({
       served: {
@@ -188,7 +198,15 @@ router.post('/api/admin/queues/:serviceId/walkin', checkAdmin, async (req, res) 
     if (!result) return res.status(404).json({ error: 'Queue not found' })
 
     const entryPriority = ['low', 'medium', 'high'].includes(priority) ? priority : svcs[0].priority || 'low'
-    const position = result.entries.length + 1
+    // Position is recomputed dynamically on read (sortEntries), but the column is
+    // NOT NULL in the schema. Use MAX(position)+1 over still-waiting entries so
+    // we never reuse a position from a cancelled/served row, and we don't depend
+    // on the unsorted entries array length.
+    const [[{ maxPos }]] = await db.query(
+      "SELECT IFNULL(MAX(position), 0) AS maxPos FROM QueueEntry WHERE queue_id = ? AND status = 'waiting'",
+      [result.queue.queue_id]
+    )
+    const position = maxPos + 1
 
     const [inserted] = await db.query(
       `INSERT INTO QueueEntry (queue_id, user_id, user_name, position, priority, walk_in, phone, notes, status)

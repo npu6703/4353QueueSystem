@@ -34,3 +34,15 @@ export async function getHistory(userId) {
 export async function getServices() {
   return request('/api/services')
 }
+
+export async function getNotifications(userId) {
+  return request(`/api/notifications?userId=${encodeURIComponent(userId)}`)
+}
+
+export async function markNotificationsRead(userId) {
+  return request('/api/notifications/read', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  })
+}

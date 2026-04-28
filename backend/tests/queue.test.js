@@ -287,21 +287,38 @@ describe('DELETE /api/queue/leave', () => {
 // ===== GET /api/queue/status =====
 
 describe('GET /api/queue/status', () => {
+  // Build N waiting-entry rows where the entry with entry_id `targetId` lands
+  // at sorted position `targetPos` (1-indexed). Earlier join_time = more
+  // minutes waited = higher score, so we space join_times evenly.
+  function buildWaitingEntries({ totalCount, targetId, targetPos, priority = 'low' }) {
+    const now = Date.now();
+    const minutesAgo = (n) => new Date(now - n * 60_000).toISOString();
+    const entries = [];
+    for (let i = 0; i < totalCount; i++) {
+      const slot = i + 1; // 1-indexed sorted position
+      const id = slot === targetPos ? targetId : 1000 + i;
+      // Earlier index = waited longer = higher score = earlier in sort.
+      // Use 100, 90, 80, ... minutes ago so ordering is deterministic.
+      entries.push({ entry_id: id, priority, join_time: minutesAgo(100 - i * 10) });
+    }
+    return entries;
+  }
+
   test('returns queue status for a user in queue', async () => {
+    const entries = buildWaitingEntries({ totalCount: 5, targetId: 1, targetPos: 2, priority: 'medium' });
+    const targetJoin = entries[1].join_time;
     db.query
-      // 1. Entry + service lookup
       .mockResolvedValueOnce([[{
         entry_id: 1,
         position: 2,
         priority: 'medium',
-        join_time: new Date().toISOString(),
+        join_time: targetJoin,
         queue_id: 'q1',
         service_id: 's1',
         serviceName: 'Dine-in',
         expected_duration: 30,
       }]])
-      // 2. Total count
-      .mockResolvedValueOnce([[{ total: 5 }]]);
+      .mockResolvedValueOnce([entries]);
 
     const res = await request(app).get('/api/queue/status?userId=user1');
 
@@ -332,18 +349,19 @@ describe('GET /api/queue/status', () => {
   });
 
   test('expectedWait is 0 for the first person in queue (position 1)', async () => {
+    const entries = buildWaitingEntries({ totalCount: 1, targetId: 1, targetPos: 1, priority: 'high' });
     db.query
       .mockResolvedValueOnce([[{
         entry_id: 1,
         position: 1,
         priority: 'high',
-        join_time: new Date().toISOString(),
+        join_time: entries[0].join_time,
         queue_id: 'q1',
         service_id: 's1',
         serviceName: 'Dine-in',
         expected_duration: 30,
       }]])
-      .mockResolvedValueOnce([[{ total: 1 }]]);
+      .mockResolvedValueOnce([entries]);
 
     const res = await request(app).get('/api/queue/status?userId=user1');
 
@@ -352,18 +370,19 @@ describe('GET /api/queue/status', () => {
   });
 
   test('expectedWait equals (position-1) * expected_duration', async () => {
+    const entries = buildWaitingEntries({ totalCount: 5, targetId: 2, targetPos: 3, priority: 'low' });
     db.query
       .mockResolvedValueOnce([[{
         entry_id: 2,
         position: 3,
         priority: 'low',
-        join_time: new Date().toISOString(),
+        join_time: entries[2].join_time,
         queue_id: 'q1',
         service_id: 's2',
         serviceName: 'Takeaway',
         expected_duration: 10,
       }]])
-      .mockResolvedValueOnce([[{ total: 5 }]]);
+      .mockResolvedValueOnce([entries]);
 
     const res = await request(app).get('/api/queue/status?userId=user2');
 
@@ -477,19 +496,33 @@ describe('GET /api/history', () => {
 // ===== Wait-Time Estimation =====
 
 describe('Wait-time estimation', () => {
+  // Reuse the same construction helper as GET /api/queue/status tests above.
+  function buildWaitingEntries({ totalCount, targetId, targetPos, priority = 'low' }) {
+    const now = Date.now();
+    const minutesAgo = (n) => new Date(now - n * 60_000).toISOString();
+    const entries = [];
+    for (let i = 0; i < totalCount; i++) {
+      const slot = i + 1;
+      const id = slot === targetPos ? targetId : 1000 + i;
+      entries.push({ entry_id: id, priority, join_time: minutesAgo(100 - i * 10) });
+    }
+    return entries;
+  }
+
   test('wait time is (position-1) * expected_duration', async () => {
+    const entries = buildWaitingEntries({ totalCount: 3, targetId: 2, targetPos: 2, priority: 'low' });
     db.query
       .mockResolvedValueOnce([[{
         entry_id: 2,
         position: 2,
         priority: 'low',
-        join_time: new Date().toISOString(),
+        join_time: entries[1].join_time,
         queue_id: 'q1',
         service_id: 's2',
         serviceName: 'Takeaway',
         expected_duration: 10,
       }]])
-      .mockResolvedValueOnce([[{ total: 3 }]]);
+      .mockResolvedValueOnce([entries]);
 
     const res = await request(app).get('/api/queue/status?userId=user2');
 
@@ -498,18 +531,19 @@ describe('Wait-time estimation', () => {
   });
 
   test('first person in queue always has 0 wait time', async () => {
+    const entries = buildWaitingEntries({ totalCount: 1, targetId: 1, targetPos: 1, priority: 'high' });
     db.query
       .mockResolvedValueOnce([[{
         entry_id: 1,
         position: 1,
         priority: 'high',
-        join_time: new Date().toISOString(),
+        join_time: entries[0].join_time,
         queue_id: 'q1',
         service_id: 's1',
         serviceName: 'Dine-in',
         expected_duration: 30,
       }]])
-      .mockResolvedValueOnce([[{ total: 1 }]]);
+      .mockResolvedValueOnce([entries]);
 
     const res = await request(app).get('/api/queue/status?userId=user1');
 
@@ -517,18 +551,19 @@ describe('Wait-time estimation', () => {
   });
 
   test('wait time scales correctly with position and duration', async () => {
+    const entries = buildWaitingEntries({ totalCount: 8, targetId: 5, targetPos: 5, priority: 'low' });
     db.query
       .mockResolvedValueOnce([[{
         entry_id: 5,
         position: 5,
         priority: 'low',
-        join_time: new Date().toISOString(),
+        join_time: entries[4].join_time,
         queue_id: 'q1',
         service_id: 's1',
         serviceName: 'Dine-in',
         expected_duration: 15,
       }]])
-      .mockResolvedValueOnce([[{ total: 8 }]]);
+      .mockResolvedValueOnce([entries]);
 
     const res = await request(app).get('/api/queue/status?userId=user5');
 

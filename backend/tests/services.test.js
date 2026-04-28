@@ -3,6 +3,13 @@ const app = require('../server')
 
 jest.mock('../db', () => ({ query: jest.fn() }))
 
+jest.mock('../middleware/roleMiddleware', () => ({
+  checkAdmin: (req, res, next) => {
+    if (req.headers['role'] === 'admin') return next()
+    return res.status(403).json({ success: false, message: 'Forbidden: admin access required' })
+  },
+}))
+
 const db = require('../db')
 const ADMIN_HEADER = { role: 'admin' }
 
