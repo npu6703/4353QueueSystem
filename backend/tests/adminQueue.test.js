@@ -3,6 +3,13 @@ const app = require('../server')
 
 jest.mock('../db', () => ({ query: jest.fn() }))
 
+jest.mock('../middleware/roleMiddleware', () => ({
+  checkAdmin: (req, res, next) => {
+    if (req.headers['role'] === 'admin') return next()
+    return res.status(403).json({ success: false, message: 'Forbidden: admin access required' })
+  },
+}))
+
 const db = require('../db')
 const ADMIN_HEADER = { role: 'admin' }
 
@@ -182,6 +189,7 @@ describe('POST /api/admin/queues/:serviceId/walkin', () => {
   test('adds a walk-in user to the queue', async () => {
     db.query.mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in', priority: 'medium' }]])
     mockQueueForService(1, 1, [])
+    db.query.mockResolvedValueOnce([[{ maxPos: 0 }]]) // MAX(position) lookup
     db.query.mockResolvedValueOnce([{ insertId: 5 }])
 
     const res = await request(app)

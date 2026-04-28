@@ -35,17 +35,11 @@ function write(key, v) {
 }
 
 function ensureDefaults() {
-  if (!read(STORAGE_KEYS.SERVICES, null)) {
-    write(STORAGE_KEYS.SERVICES, [
-      { id: 's1', name: 'Dine-in', description: 'Table service', expected: 30, priority: 'medium', open: true },
-      { id: 's2', name: 'Takeaway', description: 'Quick pickup', expected: 10, priority: 'low', open: true }
-    ])
-  }
+  // Note: real users / services / queues live in the backend MySQL database,
+  // not in localStorage. We only initialize empty client-side caches here.
+  // Seeding default credentials in localStorage would expose plaintext
+  // passwords to any script running on the page.
   if (!read(STORAGE_KEYS.QUEUES, null)) write(STORAGE_KEYS.QUEUES, {})
-  if (!read(STORAGE_KEYS.USERS, null)) write(STORAGE_KEYS.USERS, [
-    { id: 'admin1', email: 'admin@queue.com', password: 'admin123', name: 'Admin', isAdmin: true },
-    { id: 'user1', email: 'user@queue.com', password: 'user12345', name: 'John Doe', isAdmin: false }
-  ])
   if (!read(STORAGE_KEYS.HISTORY, null)) write(STORAGE_KEYS.HISTORY, [])
   if (!read(STORAGE_KEYS.NOTIFS, null)) write(STORAGE_KEYS.NOTIFS, [])
 }
@@ -53,40 +47,25 @@ function ensureDefaults() {
 ensureDefaults()
 
 // ===== Auth =====
-
-export function register({ email, password, name, phone = '', isAdmin = false }) {
-  const users = read(STORAGE_KEYS.USERS, [])
-  if (users.find((u) => u.email === email)) throw new Error('Email already exists')
-
-  const user = {
-    id: 'u' + Date.now(),
-    email,
-    password,
-    name,
-    phone: phone || '',
-    isAdmin,
-  }
-
-  users.push(user)
-  write(STORAGE_KEYS.USERS, users)
-  write(STORAGE_KEYS.CURRENT, user)
-  return user
-}
-
-export function login({ email, password }) {
-  const users = read(STORAGE_KEYS.USERS, [])
-  const user = users.find(u => u.email === email && u.password === password)
-  if (!user) throw new Error('Invalid credentials')
-  write(STORAGE_KEYS.CURRENT, user)
-  return user
-}
+// Real registration/login go through the backend (see Login.jsx / Register.jsx).
+// These helpers only manage the cached "current user" record stored after a
+// successful backend login. We check both localStorage and sessionStorage
+// because Login.jsx writes to one or the other depending on "remember me".
 
 export function logout() {
   localStorage.removeItem(STORAGE_KEYS.CURRENT)
+  sessionStorage.removeItem(STORAGE_KEYS.CURRENT)
 }
 
 export function getCurrentUser() {
-  return read(STORAGE_KEYS.CURRENT, null)
+  const raw = localStorage.getItem(STORAGE_KEYS.CURRENT)
+    || sessionStorage.getItem(STORAGE_KEYS.CURRENT)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
 }
 
 // ===== Services =====
@@ -405,7 +384,7 @@ export function markNotifsRead() {
 export const PRIORITIES = PRIORITY_WEIGHTS
 
 export default {
-  register, login, logout, getCurrentUser, getServices, saveService, deleteService,
+  logout, getCurrentUser, getServices, saveService, deleteService,
   getQueueForService, getSortedQueue, joinQueue, adminAddToQueue, leaveQueue, serveNext,
   getUserQueueStatus, removeFromQueue, boostUser, moveToTop, changeUserPriority,
   calcEffectiveScore, getHistoryForUser, getAllHistory,

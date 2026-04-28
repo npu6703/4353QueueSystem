@@ -77,18 +77,29 @@ describe('Auth Routes', () => {
       expect(res.body.message).toBe('Invalid email format')
     })
 
-    test('should return 400 for invalid role', async () => {
+    test('ignores role in body and always registers as user (no privilege escalation)', async () => {
+      pool.execute
+        .mockResolvedValueOnce([[]]) // email not exists
+        .mockResolvedValueOnce([{ insertId: 7 }]) // insert credentials
+        .mockResolvedValueOnce([{}]) // insert profile
+
+      bcrypt.hash.mockResolvedValue('hashed-password')
+
       const res = await request(app)
         .post('/api/auth/register')
         .send({
-          name: 'Quynh Vu',
-          email: 'quynh@test.com',
+          name: 'Sneaky User',
+          email: 'sneaky@test.com',
           password: 'password123',
-          role: 'manager',
+          role: 'admin',
         })
 
-      expect(res.statusCode).toBe(400)
-      expect(res.body.message).toBe('Role must be user or admin')
+      expect(res.statusCode).toBe(201)
+      expect(res.body.data.role).toBe('user')
+      // Verify the credential insert used 'user', not 'admin'
+      const credentialCall = pool.execute.mock.calls[1]
+      expect(credentialCall[1]).toContain('user')
+      expect(credentialCall[1]).not.toContain('admin')
     })
 
     test('should return 409 if email already exists', async () => {

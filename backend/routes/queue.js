@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const { notifyAdmins } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -78,7 +79,11 @@ router.post('/api/queue/join', async (req, res) => {
         "INSERT INTO Notification (user_id, message, status) VALUES (?, ?, 'sent')",
         [userId, `You joined ${svc.name} queue (${entryPriority} priority)`]
       );
-    } catch (_) { /* notification failure is non-critical */ }
+    } catch (notifErr) {
+      console.error('Failed to insert join notification:', notifErr);
+    }
+
+    await notifyAdmins(`${userName} joined ${svc.name} queue (${entryPriority} priority)`);
 
     return res.status(201).json({
       success: true,
@@ -116,7 +121,7 @@ router.delete('/api/queue/leave', async (req, res) => {
 
     // Find the user's active entry
     const [entries] = await db.query(
-      "SELECT entry_id, position FROM QueueEntry WHERE queue_id = ? AND user_id = ? AND status = 'waiting'",
+      "SELECT entry_id, position, user_name FROM QueueEntry WHERE queue_id = ? AND user_id = ? AND status = 'waiting'",
       [queueId, userId]
     );
     if (entries.length === 0) {
@@ -149,7 +154,12 @@ router.delete('/api/queue/leave', async (req, res) => {
         "INSERT INTO Notification (user_id, message, status) VALUES (?, ?, 'sent')",
         [userId, `You left ${serviceName} queue`]
       );
-    } catch (_) { /* notification failure is non-critical */ }
+    } catch (notifErr) {
+      console.error('Failed to insert leave notification:', notifErr);
+    }
+
+    const leaverName = entries[0].user_name || `User ${userId}`;
+    await notifyAdmins(`${leaverName} left ${serviceName} queue`);
 
     return res.status(200).json({ success: true });
   } catch (err) {
@@ -212,17 +222,11 @@ router.get('/api/queue/status', async (req, res) => {
     const total = allWaiting.length;
     const duration = entry.expected_duration || 10;
 
-    // Total expected wait if the user just joined at their current position.
-    const totalExpected = (position - 1) * duration;
-
-    // Subtract how long this user has already been waiting so the timer counts
-    // down as time passes, even when nobody joins or leaves.
-    // NOTE: admin boost swaps join_times between real entries (still realistic
-    // timestamps), so this stays accurate. movetotop only backdates the TARGET
-    // user's join_time — but that user ends up at position 1 (totalExpected=0)
-    // so the subtraction is harmless there.
-    const minutesWaited = (Date.now() - new Date(entry.join_time).getTime()) / 60000;
-    const expectedWait = Math.max(0, Math.round(totalExpected - minutesWaited));
+    // Estimate uses people-ahead × per-person duration so the user side matches
+    // exactly what the admin queue table shows for the same entry. The estimate
+    // shrinks naturally as people are served (position drops) without depending
+    // on join_time, which admin reorder actions can shift.
+    const expectedWait = (position - 1) * duration;
 
     return res.status(200).json({
       serviceId: entry.service_id,
