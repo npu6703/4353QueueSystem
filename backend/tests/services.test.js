@@ -1,7 +1,21 @@
 const request = require('supertest')
 const app = require('../server')
 
-jest.mock('../db', () => ({ query: jest.fn() }))
+jest.mock('../db', () => {
+  const query = jest.fn()
+  const conn = {
+    query,
+    beginTransaction: jest.fn().mockResolvedValue(undefined),
+    commit: jest.fn().mockResolvedValue(undefined),
+    rollback: jest.fn().mockResolvedValue(undefined),
+    release: jest.fn(),
+  }
+  return {
+    query,
+    getConnection: jest.fn().mockResolvedValue(conn),
+    __conn: conn,
+  }
+})
 
 jest.mock('../middleware/roleMiddleware', () => ({
   checkAdmin: (req, res, next) => {
@@ -13,7 +27,7 @@ jest.mock('../middleware/roleMiddleware', () => ({
 const db = require('../db')
 const ADMIN_HEADER = { role: 'admin' }
 
-beforeEach(() => jest.resetAllMocks())
+beforeEach(() => jest.clearAllMocks())
 
 // ===== GET /api/services =====
 
@@ -190,10 +204,28 @@ describe('PUT /api/admin/services/:id', () => {
 // ===== DELETE /api/admin/services/:id =====
 
 describe('DELETE /api/admin/services/:id', () => {
-  test('deletes a service', async () => {
+  test('deletes a service (with cascading queue + entry cleanup)', async () => {
     db.query
-      .mockResolvedValueOnce([[{ id: 1, name: 'Dine-in' }]])
-      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([[{ id: 1, name: 'Dine-in' }]]) // SELECT service
+      .mockResolvedValueOnce([[{ queue_id: 10 }]])          // SELECT queues
+      .mockResolvedValueOnce([{ affectedRows: 3 }])         // DELETE QueueEntry
+      .mockResolvedValueOnce([{ affectedRows: 1 }])         // DELETE Queue
+      .mockResolvedValueOnce([{ affectedRows: 1 }])         // DELETE Service
+
+    const res = await request(app)
+      .delete('/api/admin/services/1')
+      .set(ADMIN_HEADER)
+
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+  })
+
+  test('deletes a service with no queues (skips entry/queue deletes)', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ id: 1, name: 'Dine-in' }]]) // SELECT service
+      .mockResolvedValueOnce([[]])                          // SELECT queues -> none
+      .mockResolvedValueOnce([{ affectedRows: 0 }])         // DELETE Queue (no-op)
+      .mockResolvedValueOnce([{ affectedRows: 1 }])         // DELETE Service
 
     const res = await request(app)
       .delete('/api/admin/services/1')

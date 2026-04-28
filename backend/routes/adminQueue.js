@@ -21,7 +21,8 @@ function sortEntries(entries) {
 
 function enrichQueue(sorted, svc) {
   return sorted.map((entry, idx) => ({
-    userId: entry.entry_id,
+    entryId: entry.entry_id,
+    userId: entry.user_id,
     userName: entry.user_name,
     priority: entry.priority,
     walkIn: !!entry.walk_in,
@@ -227,15 +228,15 @@ router.post('/api/admin/queues/:serviceId/walkin', checkAdmin, async (req, res) 
 })
 
 // DELETE /api/admin/queues/:serviceId/remove/:userId — remove (cancel) an entry
-router.delete('/api/admin/queues/:serviceId/remove/:userId', checkAdmin, async (req, res) => {
+router.delete('/api/admin/queues/:serviceId/remove/:entryId', checkAdmin, async (req, res) => {
   try {
-    const { serviceId, userId } = req.params
+    const { serviceId, entryId } = req.params
     const [svcs] = await db.query('SELECT * FROM Service WHERE service_id = ?', [serviceId])
     if (svcs.length === 0) return res.status(404).json({ error: 'Service not found' })
 
     const [result] = await db.query(
       "UPDATE QueueEntry SET status = 'cancelled' WHERE entry_id = ? AND status = 'waiting'",
-      [userId]
+      [entryId]
     )
     return res.status(200).json({ success: true, removed: result.affectedRows > 0 })
   } catch (err) {
@@ -244,16 +245,16 @@ router.delete('/api/admin/queues/:serviceId/remove/:userId', checkAdmin, async (
 })
 
 // PUT /api/admin/queues/:serviceId/boost/:userId — move one position up (amount>=0) or down (amount<0)
-router.put('/api/admin/queues/:serviceId/boost/:userId', checkAdmin, async (req, res) => {
+router.put('/api/admin/queues/:serviceId/boost/:entryId', checkAdmin, async (req, res) => {
   try {
-    const { serviceId, userId } = req.params
+    const { serviceId, entryId } = req.params
     const { amount } = req.body
 
     const result = await getQueueForService(serviceId)
     if (!result) return res.status(404).json({ error: 'Queue not found' })
 
     const sorted = sortEntries(result.entries)
-    const idx = sorted.findIndex((e) => e.entry_id == userId)
+    const idx = sorted.findIndex((e) => e.entry_id == entryId)
     if (idx < 0) return res.status(404).json({ error: 'User not found in queue' })
 
     const targetIdx = Number(amount) >= 0 ? idx - 1 : idx + 1
@@ -276,9 +277,9 @@ router.put('/api/admin/queues/:serviceId/boost/:userId', checkAdmin, async (req,
 })
 
 // PUT /api/admin/queues/:serviceId/movetotop/:userId — move user to front
-router.put('/api/admin/queues/:serviceId/movetotop/:userId', checkAdmin, async (req, res) => {
+router.put('/api/admin/queues/:serviceId/movetotop/:entryId', checkAdmin, async (req, res) => {
   try {
-    const { serviceId, userId } = req.params
+    const { serviceId, entryId } = req.params
 
     const result = await getQueueForService(serviceId)
     if (!result) return res.status(404).json({ error: 'Queue not found' })
@@ -286,9 +287,9 @@ router.put('/api/admin/queues/:serviceId/movetotop/:userId', checkAdmin, async (
     const sorted = sortEntries(result.entries)
     if (sorted.length === 0) return res.status(400).json({ error: 'Queue is empty' })
 
-    const entry = sorted.find((e) => e.entry_id == userId)
+    const entry = sorted.find((e) => e.entry_id == entryId)
     if (!entry) return res.status(404).json({ error: 'User not found in queue' })
-    if (sorted[0].entry_id == userId) return res.status(200).json({ success: true })
+    if (sorted[0].entry_id == entryId) return res.status(200).json({ success: true })
 
     // Backdate join_time so this entry scores above current #1, everyone else shifts down one
     const topScore = calcEffectiveScore(sorted[0])
@@ -305,10 +306,10 @@ router.put('/api/admin/queues/:serviceId/movetotop/:userId', checkAdmin, async (
   }
 })
 
-// PUT /api/admin/queues/:serviceId/priority/:userId — change user priority
-router.put('/api/admin/queues/:serviceId/priority/:userId', checkAdmin, async (req, res) => {
+// PUT /api/admin/queues/:serviceId/priority/:entryId — change entry priority
+router.put('/api/admin/queues/:serviceId/priority/:entryId', checkAdmin, async (req, res) => {
   try {
-    const { userId } = req.params
+    const { entryId } = req.params
     const { priority } = req.body
 
     if (!['low', 'medium', 'high'].includes(priority))
@@ -316,7 +317,7 @@ router.put('/api/admin/queues/:serviceId/priority/:userId', checkAdmin, async (r
 
     const [result] = await db.query(
       "UPDATE QueueEntry SET priority = ? WHERE entry_id = ? AND status = 'waiting'",
-      [priority, userId]
+      [priority, entryId]
     )
     if (result.affectedRows === 0) return res.status(404).json({ error: 'User not found in queue' })
 

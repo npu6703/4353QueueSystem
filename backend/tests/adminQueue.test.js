@@ -237,9 +237,9 @@ describe('POST /api/admin/queues/:serviceId/walkin', () => {
   })
 })
 
-// ===== DELETE /api/admin/queues/:serviceId/remove/:userId =====
+// ===== DELETE /api/admin/queues/:serviceId/remove/:entryId =====
 
-describe('DELETE /api/admin/queues/:serviceId/remove/:userId', () => {
+describe('DELETE /api/admin/queues/:serviceId/remove/:entryId', () => {
   test('removes user from queue', async () => {
     db.query.mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in' }]])
     mockQueueForService(1, 1, [])
@@ -267,9 +267,9 @@ describe('DELETE /api/admin/queues/:serviceId/remove/:userId', () => {
   })
 })
 
-// ===== PUT /api/admin/queues/:serviceId/priority/:userId =====
+// ===== PUT /api/admin/queues/:serviceId/priority/:entryId =====
 
-describe('PUT /api/admin/queues/:serviceId/priority/:userId', () => {
+describe('PUT /api/admin/queues/:serviceId/priority/:entryId', () => {
   test('changes user priority', async () => {
     db.query.mockResolvedValueOnce([{ affectedRows: 1 }])
 
@@ -301,9 +301,9 @@ describe('PUT /api/admin/queues/:serviceId/priority/:userId', () => {
   })
 })
 
-// ===== PUT /api/admin/queues/:serviceId/boost/:userId =====
+// ===== PUT /api/admin/queues/:serviceId/boost/:entryId =====
 
-describe('PUT /api/admin/queues/:serviceId/boost/:userId', () => {
+describe('PUT /api/admin/queues/:serviceId/boost/:entryId', () => {
   test('moves user up in queue', async () => {
     const now = new Date().toISOString()
     db.query
@@ -363,9 +363,9 @@ describe('PUT /api/admin/queues/:serviceId/boost/:userId', () => {
   })
 })
 
-// ===== PUT /api/admin/queues/:serviceId/movetotop/:userId =====
+// ===== PUT /api/admin/queues/:serviceId/movetotop/:entryId =====
 
-describe('PUT /api/admin/queues/:serviceId/movetotop/:userId', () => {
+describe('PUT /api/admin/queues/:serviceId/movetotop/:entryId', () => {
   test('moves user to top of queue', async () => {
     db.query
       .mockResolvedValueOnce([[{ queue_id: 1, service_id: 1, status: 'open' }]])

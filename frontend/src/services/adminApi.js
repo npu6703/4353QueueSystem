@@ -85,30 +85,30 @@ export async function addWalkIn(serviceId, name, priority) {
   })
 }
 
-export async function removeUser(serviceId, userId) {
-  return request(`/api/admin/queues/${serviceId}/remove/${userId}`, {
+export async function removeUser(serviceId, entryId) {
+  return request(`/api/admin/queues/${serviceId}/remove/${entryId}`, {
     method: 'DELETE',
     headers: adminHeaders(false),
   })
 }
 
-export async function boostUser(serviceId, userId, amount) {
-  return request(`/api/admin/queues/${serviceId}/boost/${userId}`, {
+export async function boostUser(serviceId, entryId, amount) {
+  return request(`/api/admin/queues/${serviceId}/boost/${entryId}`, {
     method: 'PUT',
     headers: adminHeaders(),
     body: JSON.stringify({ amount }),
   })
 }
 
-export async function moveToTop(serviceId, userId) {
-  return request(`/api/admin/queues/${serviceId}/movetotop/${userId}`, {
+export async function moveToTop(serviceId, entryId) {
+  return request(`/api/admin/queues/${serviceId}/movetotop/${entryId}`, {
     method: 'PUT',
     headers: adminHeaders(false),
   })
 }
 
-export async function changePriority(serviceId, userId, priority) {
-  return request(`/api/admin/queues/${serviceId}/priority/${userId}`, {
+export async function changePriority(serviceId, entryId, priority) {
+  return request(`/api/admin/queues/${serviceId}/priority/${entryId}`, {
     method: 'PUT',
     headers: adminHeaders(),
     body: JSON.stringify({ priority }),

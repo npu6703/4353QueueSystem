@@ -72,9 +72,9 @@ export default function QueueManagement() {
     }
   }
 
-  async function handleRemove(userId, userName) {
+  async function handleRemove(entryId, userName) {
     try {
-      await removeUser(selectedSvc, userId)
+      await removeUser(selectedSvc, entryId)
       showMsg('success', `Removed ${userName} from queue`)
       await loadSummary()
       await loadQueue(selectedSvc)
@@ -83,27 +83,27 @@ export default function QueueManagement() {
     }
   }
 
-  async function handleMoveUp(userId) {
+  async function handleMoveUp(entryId) {
     try {
-      await boostUser(selectedSvc, userId, 5)
+      await boostUser(selectedSvc, entryId, 5)
       await loadQueue(selectedSvc)
     } catch (err) {
       showMsg('error', err.message)
     }
   }
 
-  async function handleMoveDown(userId) {
+  async function handleMoveDown(entryId) {
     try {
-      await boostUser(selectedSvc, userId, -5)
+      await boostUser(selectedSvc, entryId, -5)
       await loadQueue(selectedSvc)
     } catch (err) {
       showMsg('error', err.message)
     }
   }
 
-  async function handleMoveToTop(userId, userName) {
+  async function handleMoveToTop(entryId, userName) {
     try {
-      await moveToTop(selectedSvc, userId)
+      await moveToTop(selectedSvc, entryId)
       showMsg('success', `Moved ${userName} to top of queue`)
       await loadQueue(selectedSvc)
     } catch (err) {
@@ -111,9 +111,9 @@ export default function QueueManagement() {
     }
   }
 
-  async function handlePriorityChange(userId, newPriority) {
+  async function handlePriorityChange(entryId, newPriority) {
     try {
-      await changePriority(selectedSvc, userId, newPriority)
+      await changePriority(selectedSvc, entryId, newPriority)
       await loadQueue(selectedSvc)
     } catch (err) {
       showMsg('error', err.message)
@@ -319,7 +319,7 @@ export default function QueueManagement() {
               </thead>
               <tbody>
                 {sortedQueue.map((entry, i) => (
-                  <tr key={entry.userId} className={i === 0 ? 'qm-next-row' : ''}>
+                  <tr key={entry.entryId} className={i === 0 ? 'qm-next-row' : ''}>
                     <td><strong>{i + 1}</strong></td>
                     <td>
   <div className="qm-name-cell">
@@ -332,7 +332,7 @@ export default function QueueManagement() {
                       <select
                         className="qm-priority-select"
                         value={entry.priority}
-                        onChange={e => handlePriorityChange(entry.userId, e.target.value)}
+                        onChange={e => handlePriorityChange(entry.entryId, e.target.value)}
                       >
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
@@ -345,17 +345,17 @@ export default function QueueManagement() {
                     <td>
                       <div className="qm-reorder-btns">
                         {i > 0 && (
-                          <button className="qm-arrow-btn" onClick={() => handleMoveUp(entry.userId)} title="Move up">
+                          <button className="qm-arrow-btn" onClick={() => handleMoveUp(entry.entryId)} title="Move up">
                             &#9650;
                           </button>
                         )}
                         {i < sortedQueue.length - 1 && (
-                          <button className="qm-arrow-btn" onClick={() => handleMoveDown(entry.userId)} title="Move down">
+                          <button className="qm-arrow-btn" onClick={() => handleMoveDown(entry.entryId)} title="Move down">
                             &#9660;
                           </button>
                         )}
                         {i > 0 && (
-                          <button className="qm-top-btn" onClick={() => handleMoveToTop(entry.userId, entry.userName)} title="Move to top">
+                          <button className="qm-top-btn" onClick={() => handleMoveToTop(entry.entryId, entry.userName)} title="Move to top">
                             Top
                           </button>
                         )}
@@ -364,7 +364,7 @@ export default function QueueManagement() {
                     <td>
                       <button
                         className="admin-btn admin-btn-danger"
-                        onClick={() => handleRemove(entry.userId, entry.userName)}
+                        onClick={() => handleRemove(entry.entryId, entry.userName)}
                       >
                         Remove
                       </button>
