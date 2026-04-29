@@ -9,6 +9,7 @@ import {
   formatPhoneUS,
   digitsOnly,
 } from '../utils/validation'
+import { API_BASE } from '../config'
 
 export default function Register() {
   const nav = useNavigate()
@@ -67,7 +68,7 @@ export default function Register() {
     if (!ok) return
 
     try {
-      const res = await fetch('http://localhost:3001/api/auth/register', {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), phone: phoneDigits, email: email.trim(), password, role: 'user' }),

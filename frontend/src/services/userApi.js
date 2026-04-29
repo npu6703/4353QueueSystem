@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:3001'
+import { API_BASE as BASE } from '../config'
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, options)

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { validateEmail, validatePassword } from '../utils/validation'
+import { API_BASE } from '../config'
 import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function Login() {
@@ -40,7 +41,7 @@ export default function Login() {
     if (!ok) return
 
     try {
-      const res = await fetch('http://localhost:3001/api/auth/login', {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),

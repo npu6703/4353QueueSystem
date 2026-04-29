@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { getCurrentUser } from '../services/localApi'
+import { API_BASE } from '../config'
 import '../styles/ChatWidget.css'
 
 const WELCOME = {
@@ -34,13 +35,18 @@ export default function ChatWidget({ serviceId }) {
 
     try {
       const history = messages.filter((m) => m !== WELCOME)
-      const res = await fetch('http://localhost:3001/api/chat', {
+      const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // Backend now requires user-id for /api/chat (auth + per-user rate
+          // limit). userId in the body is no longer used; the server pulls it
+          // from this header.
+          'user-id': user?.id != null ? String(user.id) : '',
+        },
         body: JSON.stringify({
           message: text,
           serviceId: serviceId || null,
-          userId: user?.id || null,
           history,
         }),
       })
@@ -73,7 +79,7 @@ export default function ChatWidget({ serviceId }) {
               <div className="cw-avatar">AI</div>
               <div>
                 <div className="cw-title">QueueSmart Assistant</div>
-                <div className="cw-subtitle">Powered by Claude AI</div>
+                <div className="cw-subtitle">Self-hosted · Gemma 3</div>
               </div>
             </div>
             <button className="cw-close" onClick={() => setOpen(false)} aria-label="Close">✕</button>
