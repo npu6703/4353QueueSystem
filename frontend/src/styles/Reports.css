@@ -86,12 +86,16 @@
 }
 
 .reports-tab:hover {
-  color: #111827;
+  background: #f0fdf4;
+  color: #065f46;
 }
 
 .reports-tab.active {
-  color: #08751d;
-  border-bottom-color: #08751d;
+  background: #dcfce7;   
+  color: #08751d;        
+  font-weight: 700;
+  border-bottom-color: #08751d; 
+  border-radius: 8px;
 }
 
 /* ── Filters ── */
@@ -165,15 +169,20 @@
 .reports-link-btn {
   background: transparent;
   border: none;
-  color: #b45309;
-  text-decoration: underline;
+  color: #16a34a;        /* xanh nhẹ */
+  text-decoration: none; /* bỏ underline mặc định */
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;      /* nhẹ hơn chút */
   padding: 0;
+  font-size: 0.85rem;    /* nhỏ nhẹ hơn */
+  transition: all 0.15s ease;
   font-size: 0.9rem;
 }
 .reports-link-btn:hover {
-  color: #92400e;
+  color: #15803d;
+  background: #dcfce7;
+  border-radius: 6px;
+  text-decoration: none;
 }
 
 .reports-no-filters-note {
