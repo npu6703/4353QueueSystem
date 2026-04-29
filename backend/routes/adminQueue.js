@@ -1,6 +1,7 @@
 const express = require('express')
 const db = require('../db')
 const { checkAdmin } = require('../middleware/roleMiddleware')
+const { notifyAdmins } = require('../utils/notify')
 
 const router = express.Router()
 
@@ -161,6 +162,7 @@ router.post('/api/admin/queues/:serviceId/serve', checkAdmin, async (req, res) =
         `You are ${i === 0 ? 'next' : 'almost next'} in ${svcs[0].name}!`
       )
     }
+    await notifyAdmins(`${next.user_name} has been served in ${svcs[0].name}`)
 
     return res.status(200).json({
       served: {
@@ -220,6 +222,8 @@ router.post('/api/admin/queues/:serviceId/walkin', checkAdmin, async (req, res) 
       [result.queue.queue_id, name.trim(), position, entryPriority, phone || null, notes || null]
     )
 
+    await notifyAdmins(`Walk-in "${name.trim()}" added to ${svcs[0].name} queue (${entryPriority} priority)`)
+
     return res.status(201).json({
       entry_id: inserted.insertId,
       user_name: name.trim(),
@@ -239,10 +243,17 @@ router.delete('/api/admin/queues/:serviceId/remove/:entryId', checkAdmin, async 
     const [svcs] = await db.query('SELECT * FROM Service WHERE service_id = ?', [serviceId])
     if (svcs.length === 0) return res.status(404).json({ error: 'Service not found' })
 
+    const [entries] = await db.query(
+      "SELECT user_name FROM QueueEntry WHERE entry_id = ? AND status = 'waiting'",
+      [entryId]
+    )
     const [result] = await db.query(
       "UPDATE QueueEntry SET status = 'cancelled' WHERE entry_id = ? AND status = 'waiting'",
       [entryId]
     )
+    if (result.affectedRows > 0 && entries.length > 0) {
+      await notifyAdmins(`${entries[0].user_name} removed from ${svcs[0].name} queue`)
+    }
     return res.status(200).json({ success: true, removed: result.affectedRows > 0 })
   } catch (err) {
     return res.status(500).json({ error: 'Failed to remove user' })

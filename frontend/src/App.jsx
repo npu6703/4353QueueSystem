@@ -14,6 +14,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import ServiceManagement from './pages/ServiceManagement'
 import QueueManagement from './pages/QueueManagement'
 import Reports from './pages/Reports'
+import ChatWidget from './components/ChatWidget'
 import { getCurrentUser } from './services/localApi'
 
 function RequireAuth({ children, adminOnly }) {
@@ -35,6 +36,7 @@ export default function App() {
     <div id="app-root">
       <Navbar />
       <NotificationCenter />
+      {getCurrentUser() && <ChatWidget />}
       <main>
         <Routes>
           <Route path="/login" element={<RedirectIfLoggedIn><Login /></RedirectIfLoggedIn>} />
