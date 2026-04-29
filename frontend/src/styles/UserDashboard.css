@@ -5,6 +5,18 @@
   margin: 0 auto;
 }
 
+/* Toast banner used for route-state errors (e.g. unauthorized redirect) */
+.ud-toast {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
 /* ── Header ── */
 .ud-header {
   margin-bottom: 1.5rem;

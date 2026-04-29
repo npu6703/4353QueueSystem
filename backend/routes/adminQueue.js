@@ -141,7 +141,12 @@ router.post('/api/admin/queues/:serviceId/serve', checkAdmin, async (req, res) =
     if (sorted.length === 0) return res.status(400).json({ error: 'Queue is empty' })
 
     const next = sorted[0]
-    await db.query("UPDATE QueueEntry SET status = 'served' WHERE entry_id = ?", [next.entry_id])
+    // Stamp served_at so the reporting module can compute the real average
+    // wait time (served_at - join_time) for served entries.
+    await db.query(
+      "UPDATE QueueEntry SET status = 'served', served_at = NOW() WHERE entry_id = ?",
+      [next.entry_id]
+    )
 
     // Notify the user who was just served, plus the next 2 people in line.
     // Using a real for-loop with await so the response is sent only after the

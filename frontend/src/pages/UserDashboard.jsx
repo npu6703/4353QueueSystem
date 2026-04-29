@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getCurrentUser } from '../services/localApi'
 import { getQueueStatus, getHistory, getServices } from '../services/userApi'
 import '../styles/UserDashboard.css'
@@ -8,7 +8,21 @@ export default function UserDashboard() {
   const [services, setServices] = useState([])
   const [status, setStatus] = useState(null)
   const [history, setHistory] = useState([])
+  const [toast, setToast] = useState('')
   const user = getCurrentUser()
+  const location = useLocation()
+  const nav = useNavigate()
+
+  // Surface route-state errors (e.g. "Unauthorized" from the admin guard) once,
+  // then clear the location state so a refresh doesn't replay the toast.
+  useEffect(() => {
+    if (location.state?.error) {
+      setToast(location.state.error)
+      nav(location.pathname, { replace: true, state: null })
+      const t = setTimeout(() => setToast(''), 4000)
+      return () => clearTimeout(t)
+    }
+  }, [location.state, location.pathname, nav])
 
   useEffect(() => {
     getServices().then(setServices).catch(() => setServices([]))
@@ -26,6 +40,9 @@ export default function UserDashboard() {
 
   return (
     <div className="ud-page">
+      {toast && (
+        <div className="ud-toast" role="alert">{toast}</div>
+      )}
       <div className="ud-header">
         <h2>{user ? `Welcome, ${user.name}` : 'Dashboard'}</h2>
         <p className="ud-subtitle">Your queue overview at a glance.</p>

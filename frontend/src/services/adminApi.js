@@ -138,3 +138,57 @@ export async function markNotificationsRead(userId) {
     body: JSON.stringify({ userId: id }),
   })
 }
+
+// ===== Reports =====
+
+function buildQuery(params) {
+  const search = new URLSearchParams()
+  Object.entries(params || {}).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') search.append(k, v)
+  })
+  const s = search.toString()
+  return s ? `?${s}` : ''
+}
+
+export async function getUsersReport(params) {
+  return request(`/api/admin/reports/users${buildQuery(params)}`, { headers: adminHeaders(false) })
+}
+
+export async function getServicesReport(params) {
+  return request(`/api/admin/reports/services${buildQuery(params)}`, { headers: adminHeaders(false) })
+}
+
+export async function getQueueStatsReport(params) {
+  return request(`/api/admin/reports/queue-stats${buildQuery(params)}`, { headers: adminHeaders(false) })
+}
+
+export async function getUserHistoryReport(params) {
+  return request(`/api/admin/reports/user-history${buildQuery(params)}`, { headers: adminHeaders(false) })
+}
+
+/**
+ * Download a report as CSV. Triggers a browser file save.
+ * Uses fetch + blob so we can attach the admin headers, then synthesizes an
+ * <a download> click to save the file.
+ */
+export async function downloadReportCsv(kind, params) {
+  const path = `/api/admin/reports/${kind}${buildQuery({ ...params, format: 'csv' })}`
+  const res = await fetch(`${BASE}${path}`, { headers: adminHeaders(false) })
+  if (!res.ok) {
+    let msg = 'Failed to download report'
+    try { const j = await res.json(); msg = j.error || j.message || msg } catch { /* not JSON */ }
+    throw new Error(msg)
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  // Pull filename out of Content-Disposition if present, else derive one.
+  const cd = res.headers.get('Content-Disposition') || ''
+  const match = /filename="([^"]+)"/.exec(cd)
+  a.download = match ? match[1] : `${kind}-report.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}

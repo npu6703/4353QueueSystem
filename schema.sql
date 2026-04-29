@@ -92,6 +92,7 @@ CREATE TABLE `QueueEntry` (
   `walk_in` tinyint(1) DEFAULT '0',
   `phone` varchar(20) DEFAULT NULL,
   `notes` text,
+  `served_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`entry_id`),
   KEY `queue_id` (`queue_id`),
   KEY `user_id` (`user_id`),

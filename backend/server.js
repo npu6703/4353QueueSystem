@@ -6,6 +6,7 @@ const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const serviceRoutes = require('./routes/services');
 const adminQueueRoutes = require('./routes/adminQueue');
+const reportRoutes = require('./routes/reports');
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use('/api/auth', authRoutes);
 
 app.use(serviceRoutes);
 app.use(adminQueueRoutes);
+app.use(reportRoutes);
 
 const PORT = process.env.PORT || 3001;
 

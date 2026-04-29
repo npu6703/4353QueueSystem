@@ -81,9 +81,10 @@ export default function Navbar() {
             <div className="nav-links">
               {user.isAdmin ? (
                 <>
-                  <Link to="/admin" className={isActive('/admin') && !location.pathname.includes('/services') && !location.pathname.includes('/queues') ? 'nav-link active' : 'nav-link'}>Dashboard</Link>
+                  <Link to="/admin" className={isActive('/admin') && !location.pathname.includes('/services') && !location.pathname.includes('/queues') && !location.pathname.includes('/reports') ? 'nav-link active' : 'nav-link'}>Dashboard</Link>
                   <Link to="/admin/services" className={location.pathname === '/admin/services' ? 'nav-link active' : 'nav-link'}>Services</Link>
                   <Link to="/admin/queues" className={location.pathname === '/admin/queues' ? 'nav-link active' : 'nav-link'}>Queues</Link>
+                  <Link to="/admin/reports" className={location.pathname === '/admin/reports' ? 'nav-link active' : 'nav-link'}>Reports</Link>
                 </>
               ) : (
                 <>

@@ -13,6 +13,7 @@ import History from './pages/History'
 import AdminDashboard from './pages/AdminDashboard'
 import ServiceManagement from './pages/ServiceManagement'
 import QueueManagement from './pages/QueueManagement'
+import Reports from './pages/Reports'
 import { getCurrentUser } from './services/localApi'
 
 function RequireAuth({ children, adminOnly }) {
@@ -93,6 +94,14 @@ export default function App() {
             element={
               <RequireAuth adminOnly>
                 <QueueManagement />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/reports"
+            element={
+              <RequireAuth adminOnly>
+                <Reports />
               </RequireAuth>
             }
           />
