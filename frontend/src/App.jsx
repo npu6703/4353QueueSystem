@@ -18,7 +18,8 @@ import { getCurrentUser } from './services/localApi'
 function RequireAuth({ children, adminOnly }) {
   const user = getCurrentUser()
   if (!user) return <Navigate to="/login" replace />
-  if (adminOnly && !user.isAdmin) return <Navigate to="/" replace />
+  if (adminOnly && !user.isAdmin)
+    return <Navigate to="/" replace state={{ error: 'Unauthorized' }} />
   return children
 }
 
