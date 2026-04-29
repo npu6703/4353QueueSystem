@@ -1,8 +1,17 @@
 // Single source of truth for the backend URL.
 //
-// In dev (Vite), VITE_API_URL is read from frontend/.env (or .env.local).
-// In production builds, it's whatever was set at `npm run build` time.
-// Falls back to local backend so `npm run dev` works out of the box.
+// Defaults to the Railway-deployed backend so the app works out of the box
+// after `git pull && npm install && npm run dev` — no extra setup.
+//
+// To point to a local backend instead (e.g. when debugging changes you
+// haven't pushed yet), create `frontend/.env.local` with:
+//
+//   VITE_API_URL=http://localhost:3001
+//
+// Vite reads VITE_API_URL only at startup, so restart `npm run dev` after
+// adding/changing it.
+const RAILWAY_DEFAULT = 'https://4353queuesystem-production.up.railway.app'
+
 export const API_BASE =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
-  'http://localhost:3001'
+  RAILWAY_DEFAULT

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import './index.css'
 import './styles/theme.css'
 import './App.css'
@@ -32,11 +32,18 @@ function RedirectIfLoggedIn({ children }) {
 }
 
 export default function App() {
+  // Subscribe to route changes so the chat-widget conditional below picks up
+  // login/logout immediately. Without this, App only renders once on mount
+  // and the IIFE's getCurrentUser() result is stale until a hard refresh —
+  // that's the "chat sometimes appears, sometimes doesn't" bug.
+  useLocation()
+  const currentUser = getCurrentUser()
+
   return (
     <div id="app-root">
       <Navbar />
       <NotificationCenter />
-      {(() => { const u = getCurrentUser(); return u && !u.isAdmin ? <ChatWidget /> : null })()}
+      {currentUser && !currentUser.isAdmin && <ChatWidget />}
       <main>
         <Routes>
           <Route path="/login" element={<RedirectIfLoggedIn><Login /></RedirectIfLoggedIn>} />
