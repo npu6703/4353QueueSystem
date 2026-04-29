@@ -36,7 +36,7 @@ export default function App() {
     <div id="app-root">
       <Navbar />
       <NotificationCenter />
-      {getCurrentUser() && <ChatWidget />}
+      {(() => { const u = getCurrentUser(); return u && !u.isAdmin ? <ChatWidget /> : null })()}
       <main>
         <Routes>
           <Route path="/login" element={<RedirectIfLoggedIn><Login /></RedirectIfLoggedIn>} />

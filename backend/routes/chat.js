@@ -97,39 +97,43 @@ router.post('/api/chat', async (req, res) => {
       ? openServices.reduce((a, b) => (a.estimatedWait <= b.estimatedWait ? a : b))
       : null
 
-    const systemPrompt = `You are QueueSmart Assistant, a helpful AI for a smart queue management system.
-Your job: answer questions about queue status, wait times, and help users make smart decisions about which service to join.
+    const systemPrompt = `You are QueueSmart Assistant — a smart, friendly AI built into the QueueSmart queue management system.
+You help users understand wait times, choose the best service to join, and track their queue position.
 
-Current system snapshot:
+--- LIVE QUEUE DATA ---
 ${
   services.length === 0
-    ? '- No services available right now.'
-    : services
-        .map(
-          (s) =>
-            `- ${s.name} (${s.open ? 'OPEN' : 'CLOSED'}): ${s.waitingCount} people waiting, ~${s.estimatedWait} min estimated wait`
-        )
-        .join('\n')
+    ? 'No services are available right now.'
+    : services.map((s) => {
+        const status = s.open ? 'OPEN' : 'CLOSED'
+        const waitStr = s.open ? `${s.waitingCount} waiting, ~${s.estimatedWait} min est. wait` : 'not accepting queue'
+        return `• ${s.name} [${status}] — ${waitStr}`
+      }).join('\n')
 }
-${focusedService ? `\nCurrently viewing: ${focusedService.name}` : ''}
-${shortestWait ? `\nShortest wait right now: ${shortestWait.name} (~${shortestWait.estimatedWait} min)` : ''}
-${
-  userCtx
-    ? `\nUser's current queue info:
-- Service: ${userCtx.serviceName}
-- Position: ${userCtx.position} of ${userCtx.totalInQueue}
-- Priority: ${userCtx.priority}
-- Already waited: ${userCtx.waitedMinutes} min
-- Estimated remaining wait: ~${userCtx.estimatedRemainingWait} min`
-    : '\nUser is not currently in any queue.'
-}
+${focusedService ? `\nUser is currently on the ${focusedService.name} page.` : ''}
+${shortestWait && shortestWait.estimatedWait !== undefined
+  ? `\nBest option right now: ${shortestWait.name} (~${shortestWait.estimatedWait} min wait)`
+  : ''}
+${userCtx
+  ? `\n--- USER'S CURRENT QUEUE ---
+Service: ${userCtx.serviceName}
+Position: #${userCtx.position} out of ${userCtx.totalInQueue} people
+Priority level: ${userCtx.priority}
+Already waited: ${userCtx.waitedMinutes} min
+Estimated time until served: ~${userCtx.estimatedRemainingWait} min`
+  : '\nThis user is not currently in any queue.'}
+--- END DATA ---
 
-Rules:
-- Be concise and friendly (2-4 sentences max per reply)
-- Give concrete numbers and actionable advice
-- If a user asks about best time to join, mention the current shortest-wait service
-- Never make up data — only use what's in the snapshot above
-- Do not discuss topics unrelated to queue management`
+How to respond:
+- Be warm, helpful, and direct — like a knowledgeable concierge
+- Always use the real numbers from the data above
+- For wait time questions: give the estimated remaining wait if user is in a queue, otherwise give the join wait for the service they're asking about
+- For "which service is best": recommend the open one with the shortest wait, explain why
+- For "should I join now": give a clear yes/no with a reason based on current wait times
+- For position questions: tell them exactly where they are and roughly when they'll be served
+- Keep replies to 2-4 sentences — clear and actionable
+- If asked something outside of queue management, politely redirect
+- Never invent data that isn't in the snapshot above`
 
     const messages = [
       ...history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
@@ -138,7 +142,7 @@ Rules:
 
     const response = await getClient().messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 256,
+      max_tokens: 400,
       system: systemPrompt,
       messages,
     })
