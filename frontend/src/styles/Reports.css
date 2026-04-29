@@ -30,6 +30,7 @@
 .reports-actions {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .reports-btn {
@@ -64,6 +65,16 @@
   background: #f9fafb;
 }
 
+.reports-btn-ghost {
+  background: transparent;
+  color: #6b7280;
+  border-color: #e5e7eb;
+}
+.reports-btn-ghost:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+}
+
 /* ── Tabs ── */
 .reports-tabs {
   display: flex;
@@ -91,10 +102,10 @@
 }
 
 .reports-tab.active {
-  background: #dcfce7;   
-  color: #08751d;        
+  background: #dcfce7;
+  color: #08751d;
   font-weight: 700;
-  border-bottom-color: #08751d; 
+  border-bottom-color: #08751d;
   border-radius: 8px;
 }
 
@@ -127,7 +138,11 @@
   border-radius: 6px;
   font-size: 0.85rem;
   background: #fff;
-  min-width: 160px;
+  min-width: 140px;
+}
+
+.reports-filters select {
+  cursor: pointer;
 }
 
 .reports-error {
@@ -169,31 +184,18 @@
 .reports-link-btn {
   background: transparent;
   border: none;
-  color: #16a34a;        /* xanh nhẹ */
-  text-decoration: none; /* bỏ underline mặc định */
+  color: #16a34a;
+  text-decoration: none;
   cursor: pointer;
-  font-weight: 500;      /* nhẹ hơn chút */
+  font-weight: 500;
   padding: 0;
-  font-size: 0.85rem;    /* nhỏ nhẹ hơn */
+  font-size: 0.85rem;
   transition: all 0.15s ease;
-  font-size: 0.9rem;
 }
 .reports-link-btn:hover {
   color: #15803d;
   background: #dcfce7;
   border-radius: 6px;
-  text-decoration: none;
-}
-
-.reports-no-filters-note {
-  color: #6b7280;
-  font-size: 0.85rem;
-  font-style: italic;
-  margin: 0 0 1.25rem 0;
-  padding: 8px 12px;
-  background: #f9fafb;
-  border-left: 3px solid #d1d5db;
-  border-radius: 4px;
 }
 
 .reports-filter-meta {
@@ -225,14 +227,10 @@
   padding: 0 2px;
   font-weight: 700;
 }
-.reports-pill-x:hover {
-  color: #4c1d95;
-}
+.reports-pill-x:hover { color: #4c1d95; }
 
 /* ── Section ── */
-.reports-section {
-  margin-bottom: 2rem;
-}
+.reports-section { margin-bottom: 2rem; }
 
 .reports-section-title {
   font-size: 1.05rem;
@@ -277,13 +275,8 @@
   letter-spacing: 0.03em;
 }
 
-.reports-table tbody tr:hover {
-  background: #fafafa;
-}
-
-.reports-table tbody tr:last-child td {
-  border-bottom: none;
-}
+.reports-table tbody tr:hover { background: #fafafa; }
+.reports-table tbody tr:last-child td { border-bottom: none; }
 
 /* ── Badges ── */
 .reports-badge {
@@ -312,6 +305,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .reports-stat-card {
@@ -359,4 +353,63 @@
   gap: 4px;
   flex-wrap: wrap;
   margin-top: 4px;
+}
+
+/* ══════════════════════════════════════════
+   CHARTS
+══════════════════════════════════════════ */
+
+.reports-charts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.reports-chart-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* Half-width charts sit side by side */
+.reports-chart-half {
+  flex: 1 1 300px;
+  min-width: 280px;
+  margin-bottom: 0;
+}
+
+/* Full-width chart spans the whole row */
+.reports-chart-full {
+  flex: 1 1 100%;
+  margin-bottom: 0;
+}
+
+.reports-chart-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.75rem 0;
+}
+
+/* Custom tooltip */
+.chart-tooltip {
+  background: #1f2937;
+  color: #f9fafb;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.chart-tooltip-label {
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: #d1d5db;
+  font-size: 0.78rem;
 }
