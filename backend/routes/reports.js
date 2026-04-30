@@ -53,6 +53,33 @@ function buildDateClause(alias, filters) {
   return { clauses, params };
 }
 
+// ---------------------------------------------------------------------------
+// Whitelisted query-param filters. Anything not in the allow-list is silently
+// ignored — never interpolate raw user input into SQL.
+// ---------------------------------------------------------------------------
+const ALLOWED_STATUS = new Set(['waiting', 'served', 'cancelled']);
+const ALLOWED_PRIORITY = new Set(['low', 'medium', 'high']);
+const ALLOWED_ROLE = new Set(['user', 'admin']);
+
+function parseStatus(req) {
+  const v = String(req.query.status || '').toLowerCase();
+  return ALLOWED_STATUS.has(v) ? v : null;
+}
+function parsePriority(req) {
+  const v = String(req.query.priority || '').toLowerCase();
+  return ALLOWED_PRIORITY.has(v) ? v : null;
+}
+function parseRole(req) {
+  const v = String(req.query.role || '').toLowerCase();
+  return ALLOWED_ROLE.has(v) ? v : null;
+}
+function parseWalkIn(req) {
+  const v = String(req.query.walkIn || '').toLowerCase();
+  if (v === 'true' || v === '1') return 1;
+  if (v === 'false' || v === '0') return 0;
+  return null;
+}
+
 // ============================================================================
 // GET /api/admin/reports/users
 // One row per user with their queue participation summary.
@@ -61,6 +88,7 @@ router.get('/api/admin/reports/users', checkAdmin, async (req, res) => {
   try {
     const filters = parseDateFilters(req);
     const format = pickFormat(req);
+    const role = parseRole(req);
     const { clauses, params } = buildDateClause('qe', filters);
     const whereDate = clauses.length ? `AND ${clauses.join(' AND ')}` : '';
     // When the admin scoped the report to a date range, the report is asking
@@ -68,6 +96,9 @@ router.get('/api/admin/reports/users', checkAdmin, async (req, res) => {
     // matching entries via HAVING. With no filter, all users still appear so
     // the report doubles as a directory.
     const havingClause = clauses.length ? 'HAVING total_entries > 0' : '';
+    // Role filter is a top-level WHERE on UserCredentials.
+    const roleWhere = role ? 'WHERE uc.role = ?' : '';
+    const roleParams = role ? [role] : [];
 
     const sql = `
       SELECT uc.user_id,
@@ -82,11 +113,14 @@ router.get('/api/admin/reports/users', checkAdmin, async (req, res) => {
       FROM UserCredentials uc
       LEFT JOIN UserProfile up ON uc.user_id = up.user_id
       LEFT JOIN QueueEntry qe ON qe.user_id = uc.user_id ${whereDate}
+      ${roleWhere}
       GROUP BY uc.user_id, up.full_name, uc.email, uc.role
       ${havingClause}
       ORDER BY total_entries DESC, uc.user_id ASC
     `;
-    const [rows] = await db.query(sql, params);
+    // Param order: date params (in JOIN's ON clause) come BEFORE role params
+    // (in the WHERE clause).
+    const [rows] = await db.query(sql, [...params, ...roleParams]);
 
     const data = rows.map((r) => ({
       userId: r.user_id,
@@ -193,11 +227,21 @@ router.get('/api/admin/reports/queue-stats', checkAdmin, async (req, res) => {
     if (serviceIdRaw && (!Number.isInteger(serviceId) || serviceId <= 0)) {
       return res.status(400).json({ error: 'serviceId must be a positive integer' });
     }
+    const status = parseStatus(req);
+    const priority = parsePriority(req);
 
     const { clauses, params } = buildDateClause('qe', filters);
     if (serviceId) {
       clauses.push('q.service_id = ?');
       params.push(serviceId);
+    }
+    if (status) {
+      clauses.push('qe.status = ?');
+      params.push(status);
+    }
+    if (priority) {
+      clauses.push('qe.`priority` = ?');
+      params.push(priority);
     }
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
 
@@ -330,11 +374,26 @@ router.get('/api/admin/reports/user-history', checkAdmin, async (req, res) => {
     if (userIdRaw && (!Number.isInteger(userId) || userId <= 0)) {
       return res.status(400).json({ error: 'userId must be a positive integer' });
     }
+    const status = parseStatus(req);
+    const priority = parsePriority(req);
+    const walkIn = parseWalkIn(req);
 
     const { clauses, params } = buildDateClause('qe', filters);
     if (userId) {
       clauses.push('qe.user_id = ?');
       params.push(userId);
+    }
+    if (status) {
+      clauses.push('qe.status = ?');
+      params.push(status);
+    }
+    if (priority) {
+      clauses.push('qe.`priority` = ?');
+      params.push(priority);
+    }
+    if (walkIn !== null) {
+      clauses.push('qe.walk_in = ?');
+      params.push(walkIn);
     }
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
 

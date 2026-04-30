@@ -90,6 +90,26 @@ describe('GET /api/admin/reports/users', () => {
     expect(sqlCall[0]).not.toMatch(/HAVING/)
   })
 
+  test('role=admin filter scopes to admin users', async () => {
+    db.query.mockResolvedValueOnce([[]])
+
+    await request(app).get('/api/admin/reports/users?role=admin').set(ADMIN)
+
+    const sqlCall = db.query.mock.calls[0]
+    expect(sqlCall[0]).toMatch(/WHERE uc\.role = \?/)
+    expect(sqlCall[1]).toEqual(['admin'])
+  })
+
+  test('invalid role values are silently dropped (no SQL injection risk)', async () => {
+    db.query.mockResolvedValueOnce([[]])
+
+    await request(app).get('/api/admin/reports/users?role=hacker--; DROP TABLE Users').set(ADMIN)
+
+    const sqlCall = db.query.mock.calls[0]
+    expect(sqlCall[0]).not.toMatch(/WHERE uc\.role/)
+    expect(sqlCall[1]).toEqual([])
+  })
+
   test('returns 403 without admin header', async () => {
     const res = await request(app).get('/api/admin/reports/users')
     expect(res.status).toBe(403)
@@ -219,6 +239,44 @@ describe('GET /api/admin/reports/queue-stats', () => {
     expect(countsCall[1]).toEqual([2])
   })
 
+  test('passes status + priority filters to SQL', async () => {
+    mockStats({
+      counts: { total_entries: 0, served: 0, cancelled: 0, waiting: 0, walk_ins: 0 },
+      priorityRows: [],
+      avgWait: null,
+      avgServed: null,
+      servedWithData: 0,
+    })
+
+    await request(app)
+      .get('/api/admin/reports/queue-stats?status=served&priority=high')
+      .set(ADMIN)
+
+    const countsCall = db.query.mock.calls[0]
+    expect(countsCall[0]).toMatch(/qe\.status = \?/)
+    expect(countsCall[0]).toMatch(/qe\.`priority` = \?/)
+    expect(countsCall[1]).toEqual(['served', 'high'])
+  })
+
+  test('drops invalid status / priority values', async () => {
+    mockStats({
+      counts: { total_entries: 0, served: 0, cancelled: 0, waiting: 0, walk_ins: 0 },
+      priorityRows: [],
+      avgWait: null,
+      avgServed: null,
+      servedWithData: 0,
+    })
+
+    await request(app)
+      .get('/api/admin/reports/queue-stats?status=hacked&priority=urgent')
+      .set(ADMIN)
+
+    const countsCall = db.query.mock.calls[0]
+    expect(countsCall[0]).not.toMatch(/qe\.status = \?/)
+    expect(countsCall[0]).not.toMatch(/qe\.`priority` = \?/)
+    expect(countsCall[1]).toEqual([])
+  })
+
   test('avg-wait-until-served query filters by served_at IS NOT NULL', async () => {
     mockStats({
       counts: { total_entries: 0, served: 0, cancelled: 0, waiting: 0, walk_ins: 0 },
@@ -285,6 +343,44 @@ describe('GET /api/admin/reports/user-history', () => {
   test('rejects invalid userId', async () => {
     const res = await request(app).get('/api/admin/reports/user-history?userId=-1').set(ADMIN)
     expect(res.status).toBe(400)
+  })
+
+  test('passes status, priority, and walkIn filters to SQL', async () => {
+    db.query.mockResolvedValueOnce([[]])
+
+    await request(app)
+      .get('/api/admin/reports/user-history?status=served&priority=high&walkIn=true')
+      .set(ADMIN)
+
+    const sqlCall = db.query.mock.calls[0]
+    expect(sqlCall[0]).toMatch(/qe\.status = \?/)
+    expect(sqlCall[0]).toMatch(/qe\.`priority` = \?/)
+    expect(sqlCall[0]).toMatch(/qe\.walk_in = \?/)
+    expect(sqlCall[1]).toEqual(['served', 'high', 1])
+  })
+
+  test('walkIn=false filters out walk-ins', async () => {
+    db.query.mockResolvedValueOnce([[]])
+
+    await request(app).get('/api/admin/reports/user-history?walkIn=false').set(ADMIN)
+
+    const sqlCall = db.query.mock.calls[0]
+    expect(sqlCall[0]).toMatch(/qe\.walk_in = \?/)
+    expect(sqlCall[1]).toEqual([0])
+  })
+
+  test('drops invalid filter values silently', async () => {
+    db.query.mockResolvedValueOnce([[]])
+
+    await request(app)
+      .get('/api/admin/reports/user-history?status=fake&priority=urgent&walkIn=maybe')
+      .set(ADMIN)
+
+    const sqlCall = db.query.mock.calls[0]
+    expect(sqlCall[0]).not.toMatch(/qe\.status = \?/)
+    expect(sqlCall[0]).not.toMatch(/qe\.`priority` = \?/)
+    expect(sqlCall[0]).not.toMatch(/qe\.walk_in = \?/)
+    expect(sqlCall[1]).toEqual([])
   })
 
   test('CSV format works', async () => {
