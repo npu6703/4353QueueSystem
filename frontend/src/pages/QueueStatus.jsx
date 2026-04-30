@@ -7,19 +7,31 @@ import '../styles/QueueStatus.css'
 export default function QueueStatus() {
   const [services, setServices] = useState([])
   const [status, setStatus] = useState(null)
+  const [now, setNow] = useState(Date.now())
   const user = getCurrentUser()
 
   useEffect(() => {
     getServices().then(setServices).catch(() => setServices([]))
     if (!user) return
     getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
-    const interval = setInterval(() => {
+    const pollInterval = setInterval(() => {
       getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
-    }, 1000)
-    return () => clearInterval(interval)
+    }, 5000)
+    const tickInterval = setInterval(() => setNow(Date.now()), 1000)
+    return () => { clearInterval(pollInterval); clearInterval(tickInterval) }
   }, [])
 
   const svc = status ? services.find(s => s.id === status.serviceId) : null
+
+  // Live wait: base estimate from position minus seconds already elapsed since joining
+  function getLiveWait() {
+    if (!status) return 0
+    const baseWait = status.expectedWait // minutes, from backend
+    const elapsed = status.joinedAt
+      ? (now - new Date(status.joinedAt).getTime()) / 60000
+      : 0
+    return Math.max(0, Math.round(baseWait - elapsed))
+  }
 
   function getStatusText() {
     if (!status) return ''
@@ -68,6 +80,8 @@ export default function QueueStatus() {
     )
   }
 
+  const liveWait = getLiveWait()
+
   return (
     <div className="qs-page">
       <div className="qs-header">
@@ -108,7 +122,9 @@ export default function QueueStatus() {
           </div>
           <div className="qs-row">
             <span className="qs-row-label">Estimated wait</span>
-            <span className="qs-row-value">{Math.round(status.expectedWait)} min</span>
+            <span className="qs-row-value">
+              {liveWait === 0 ? "Any moment now" : `~${liveWait} min`}
+            </span>
           </div>
           <div className="qs-row">
             <span className="qs-row-label">Status</span>

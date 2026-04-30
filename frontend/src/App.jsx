@@ -31,6 +31,13 @@ function RedirectIfLoggedIn({ children }) {
   return children
 }
 
+function UserChatWidget() {
+  useLocation() // re-evaluate on every navigation
+  const user = getCurrentUser()
+  if (!user || user.isAdmin) return null
+  return <ChatWidget />
+}
+
 export default function App() {
   // Subscribe to route changes so the chat-widget conditional below picks up
   // login/logout immediately. Without this, App only renders once on mount
