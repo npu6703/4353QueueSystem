@@ -1,0 +1,472 @@
+/* ==================== Service Management Page ==================== */
+
+.svm-page {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.svm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.svm-header > button {
+  flex-shrink: 0;
+}
+
+.svm-title {
+  margin: 0;
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+  color: var(--green-dark);
+  letter-spacing: -0.02em;
+}
+
+.svm-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* ==================== Stats Row ==================== */
+.svm-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.svm-stat {
+  background: white;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.svm-stat:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.svm-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.svm-stat-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.svm-stat-body {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.svm-stat-number {
+  font-size: 2.8rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--green-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.svm-stat-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.svm-stat-closed .svm-stat-number { color: var(--danger); }
+
+/* ==================== Empty State ==================== */
+.svm-empty {
+  text-align: center;
+  padding: 5rem 2rem;
+  background: white;
+  border-radius: var(--radius);
+  border: 2px dashed var(--border);
+  animation: fadeIn 0.3s ease;
+}
+
+.svm-empty-icon {
+  width: 56px;
+  height: 56px;
+  background: var(--green-subtle);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+}
+
+.svm-empty-icon svg {
+  width: 26px;
+  height: 26px;
+  stroke: var(--green-dark);
+}
+
+.svm-empty h3 {
+  margin: 0 0 0.4rem;
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.svm-empty p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ==================== Service Cards Grid ==================== */
+.svm-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.svm-card {
+  background: white;
+  border-radius: var(--radius);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.35s ease both;
+}
+
+.svm-card-accent {
+  height: 4px;
+  background: linear-gradient(90deg, var(--green-dark), #6fcf6f);
+  flex-shrink: 0;
+}
+
+.svm-card-body {
+  padding: 1.4rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1;
+}
+
+.svm-card:nth-child(1) { animation-delay: 0.03s; }
+.svm-card:nth-child(2) { animation-delay: 0.06s; }
+.svm-card:nth-child(3) { animation-delay: 0.09s; }
+.svm-card:nth-child(4) { animation-delay: 0.12s; }
+.svm-card:nth-child(5) { animation-delay: 0.15s; }
+.svm-card:nth-child(6) { animation-delay: 0.18s; }
+
+.svm-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  border-color: rgba(52, 121, 40, 0.2);
+}
+
+.svm-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.svm-card-name {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.svm-card-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.svm-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.svm-card-duration {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.svm-card-duration svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.svm-card-actions {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.svm-card-actions .sm-btn {
+  flex: 1;
+  text-align: center;
+  padding: 0.7rem;
+  font-size: 0.88rem;
+  border-radius: 0;
+  border: none;
+  font-weight: 600;
+}
+
+.svm-card-actions .sm-btn:first-child {
+  border-right: 1px solid var(--border);
+  border-radius: 0 0 0 var(--radius);
+}
+
+.svm-card-actions .sm-btn:last-child {
+  border-radius: 0 0 var(--radius) 0;
+}
+
+/* ==================== Modal ==================== */
+.svm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 1rem;
+  animation: fadeIn 0.15s ease;
+}
+
+.svm-modal {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18), 0 8px 20px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: scaleIn 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.svm-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.svm-modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.svm-close {
+  background: none;
+  border: none;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.svm-close:hover {
+  background: #f3f4f6;
+  color: var(--text);
+}
+
+.svm-modal-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.svm-modal-body .form-row {
+  margin-bottom: 0.5rem;
+}
+
+.svm-modal-body textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.svm-inline-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.svm-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: #fafafa;
+  border-radius: 0 0 var(--radius) var(--radius);
+  position: sticky;
+  bottom: 0;
+}
+
+.svm-btn-cancel {
+  background: white;
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.svm-btn-cancel:hover {
+  border-color: #9ca3af;
+  color: var(--text);
+}
+
+/* ==================== Delete Confirmation ==================== */
+.svm-confirm {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  text-align: center;
+  animation: scaleIn 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.svm-confirm-icon {
+  width: 52px;
+  height: 52px;
+  background: var(--danger-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+}
+
+.svm-confirm-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: var(--danger);
+}
+
+.svm-confirm h3 {
+  margin: 0 0 0.5rem;
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.svm-confirm p {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  margin-bottom: 1.75rem;
+}
+
+.svm-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.svm-btn-danger {
+  background: var(--danger);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+}
+
+.svm-btn-danger:hover {
+  background: #b91c1c;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+  transform: translateY(-1px);
+}
+
+/* ==================== Input Error States ==================== */
+input.svm-err, select.svm-err, textarea.svm-err {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+}
+
+.svm-err-text {
+  color: var(--danger);
+  font-size: 0.78rem;
+  margin-top: 0.15rem;
+  animation: slideDown 0.15s ease;
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 600px) {
+  .svm-grid {
+    grid-template-columns: 1fr;
+  }
+  .svm-inline-grid {
+    grid-template-columns: 1fr;
+  }
+  .svm-confirm-actions {
+    flex-direction: column-reverse;
+  }
+  .svm-btn-danger,
+  .svm-btn-cancel {
+    width: 100%;
+  }
+}
