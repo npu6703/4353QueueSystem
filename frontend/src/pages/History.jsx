@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getCurrentUser, getServices } from '../services/localApi'
+import { getCurrentUser } from '../services/localApi'
 import { getHistory } from '../services/userApi'
 import '../styles/History.css'
 
 export default function History() {
   const user = getCurrentUser()
-  const services = getServices()
   const [history, setHistory] = useState([])
   const [filter, setFilter] = useState('all')
 
@@ -15,10 +14,6 @@ export default function History() {
       getHistory(user.id).then(setHistory).catch(() => setHistory([]))
     }
   }, [])
-
-  function svcName(id) {
-    return services.find(s => s.id === id)?.name || id
-  }
 
   function formatDate(dateStr) {
     const d = new Date(dateStr)
@@ -111,7 +106,7 @@ export default function History() {
                     <td data-label="Service">
                       <span className="hist-svc-name">{h.serviceName}</span>
                     </td>
-                    <td data-label="Outcome">``
+                    <td data-label="Outcome">
                       <span className={`hist-outcome ${outcomeClass(h.outcome)}`}>
                         <span className="hist-outcome-dot"></span>
                         {h.outcome.charAt(0).toUpperCase() + h.outcome.slice(1)}
