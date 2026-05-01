@@ -564,7 +564,7 @@ The user is NOT currently in any queue.`
     const historyBlock = !userCtx || userCtx.history.length === 0
       ? 'No past visits on record.'
       : userCtx.history.map((h) =>
-          `  - ${h.serviceName} (${h.outcome}) on ${new Date(h.when).toLocaleString()}`
+          `  - ${h.serviceName} (${h.outcome}) on ${new Date(h.when).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${new Date(h.when).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
         ).join('\n')
 
     const systemPrompt = `You are QueueSmart Assistant — a smart, friendly AI built into the QueueSmart queue management system.
