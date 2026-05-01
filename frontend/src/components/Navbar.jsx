@@ -65,6 +65,13 @@ export default function Navbar() {
     }
   }
 
+  // Auto-mark all as read the moment the dropdown is opened
+  function toggleNotifs() {
+    const opening = !showNotifs
+    setShowNotifs(opening)
+    if (opening && unreadCount > 0) handleMarkRead()
+  }
+
   const unreadCount = notifs.filter(n => n.status !== 'viewed' && !n.read).length
 
   function isActive(path) {
@@ -101,7 +108,7 @@ export default function Navbar() {
 
               {/* Bell icon */}
               <div className="notif-wrapper" ref={dropdownRef}>
-                <button className="notif-bell" onClick={() => setShowNotifs(!showNotifs)} title="Notifications">
+                <button className="notif-bell" onClick={toggleNotifs} title="Notifications">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -113,9 +120,6 @@ export default function Navbar() {
                   <div className="notif-dropdown">
                     <div className="notif-dropdown-header">
                       <span>Notifications</span>
-                      {unreadCount > 0 && (
-                        <button className="notif-mark-btn" onClick={handleMarkRead}>Mark all read</button>
-                      )}
                     </div>
                     {notifs.length === 0 ? (
                       <div className="notif-empty">No notifications</div>

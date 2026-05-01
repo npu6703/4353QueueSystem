@@ -9,6 +9,7 @@ export default function UserDashboard() {
   const [status, setStatus] = useState(null)
   const [history, setHistory] = useState([])
   const [toast, setToast] = useState('')
+  const [now, setNow] = useState(Date.now())
   const user = getCurrentUser()
   const location = useLocation()
   const nav = useNavigate()
@@ -29,11 +30,21 @@ export default function UserDashboard() {
     if (!user) return
     getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
     getHistory(user.id).then(setHistory).catch(() => setHistory([]))
-    const interval = setInterval(() => {
+    const pollInterval = setInterval(() => {
       getQueueStatus(user.id).then(setStatus).catch(() => setStatus(null))
-    }, 1000)
-    return () => clearInterval(interval)
+    }, 5000)
+    const tickInterval = setInterval(() => setNow(Date.now()), 1000)
+    return () => { clearInterval(pollInterval); clearInterval(tickInterval) }
   }, [])
+
+  // Same live-countdown logic as QueueStatus so the two pages always match
+  function getLiveWait() {
+    if (!status) return 0
+    const elapsed = status.joinedAt
+      ? (now - new Date(status.joinedAt).getTime()) / 60000
+      : 0
+    return Math.max(0, Math.round(status.expectedWait - elapsed))
+  }
 
   const openServices = services.filter(s => s.open)
   const activeService = status ? services.find(s => s.id === status.serviceId) : null
@@ -62,7 +73,9 @@ export default function UserDashboard() {
         </div>
         <div className="ud-stat-card blue">
           <div className="ud-stat-label">Est. Wait</div>
-          <div className="ud-stat-value">{status ? `${Math.round(status.expectedWait)} min` : '—'}</div>
+          <div className="ud-stat-value">
+            {status ? (getLiveWait() === 0 ? 'Any moment' : `${getLiveWait()} min`) : '—'}
+          </div>
           <div className="ud-stat-note">{status ? 'approximate' : 'N/A'}</div>
         </div>
         <div className="ud-stat-card muted">
@@ -111,7 +124,7 @@ export default function UserDashboard() {
                   <div className="ud-queue-pos-circle">#{status.position}</div>
                   <div className="ud-queue-pos-text">
                     <strong>{activeService?.name || status.serviceId}</strong>
-                    <span>Estimated wait: {Math.round(status.expectedWait)} min</span>
+                    <span>Estimated wait: {getLiveWait() === 0 ? 'Any moment now' : `${getLiveWait()} min`}</span>
                   </div>
                 </div>
                 <span className={`ud-queue-chip ${status.position === 1 ? 'almost' : 'waiting'}`}>
