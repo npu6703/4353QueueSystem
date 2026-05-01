@@ -26,11 +26,11 @@ export default function QueueStatus() {
   // Live wait: base estimate from position minus seconds already elapsed since joining
   function getLiveWait() {
     if (!status) return 0
-    const baseWait = status.expectedWait // minutes, from backend
     const elapsed = status.joinedAt
       ? (now - new Date(status.joinedAt).getTime()) / 60000
       : 0
-    return Math.max(0, Math.round(baseWait - elapsed))
+    const raw = Math.round(status.expectedWait - elapsed)
+    return status.position === 1 ? Math.max(0, raw) : Math.max(1, raw)
   }
 
   function getStatusText() {
