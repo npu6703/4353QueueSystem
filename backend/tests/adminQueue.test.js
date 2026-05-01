@@ -363,6 +363,165 @@ describe('PUT /api/admin/queues/:serviceId/boost/:entryId', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Additional coverage: 500 error paths, addNotif, and notifyAdmins branches
+// ---------------------------------------------------------------------------
+
+describe('GET /api/admin/queues/:serviceId — 500 error (line 108)', () => {
+  test('returns 500 on database error', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'))
+    const res = await request(app).get('/api/admin/queues/1').set(ADMIN_HEADER)
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/failed to fetch queue/i)
+  })
+})
+
+describe('GET /api/admin/history — 500 error (line 127)', () => {
+  test('returns 500 on database error', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'))
+    const res = await request(app).get('/api/admin/history').set(ADMIN_HEADER)
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/failed to fetch history/i)
+  })
+})
+
+describe('POST /api/admin/queues/:serviceId/serve — upcoming notifications & error paths', () => {
+  // Entries use snake_case user_id so addNotif receives a real userId
+  // and the INSERT queries actually fire (covers lines 56-60).
+  test('notifies the next two people in line when queue has 3 entries (lines 56-60, 159-160)', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in', expected: 30 }]])
+      .mockResolvedValueOnce([[{ queue_id: 1, service_id: 1, status: 'open' }]])
+      .mockResolvedValueOnce([[
+        { entry_id: 1, user_id: 10, user_name: 'Alice', priority: 'high',
+          joinedAt: new Date(Date.now() - 30000).toISOString() },
+        { entry_id: 2, user_id: 11, user_name: 'Bob',   priority: 'medium',
+          joinedAt: new Date(Date.now() - 20000).toISOString() },
+        { entry_id: 3, user_id: 12, user_name: 'Carol', priority: 'low',
+          joinedAt: new Date(Date.now() - 10000).toISOString() },
+      ]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])    // UPDATE served
+      .mockResolvedValueOnce([{ affectedRows: 1 }])    // addNotif: served (Alice)
+      .mockResolvedValueOnce([{ affectedRows: 1 }])    // addNotif: "next" (Bob)
+      .mockResolvedValueOnce([{ affectedRows: 1 }])    // addNotif: "almost next" (Carol)
+      .mockResolvedValueOnce([[]])                      // notifyAdmins: no admins
+
+    const res = await request(app).post('/api/admin/queues/1/serve').set(ADMIN_HEADER)
+    expect(res.status).toBe(200)
+
+    const insertCalls = db.query.mock.calls.filter(([sql]) =>
+      /INSERT INTO Notification/.test(sql)
+    )
+    // 3 INSERT calls: Alice served, Bob "next", Carol "almost next"
+    expect(insertCalls).toHaveLength(3)
+    expect(insertCalls[1][1][0]).toBe(11)
+    expect(insertCalls[1][1][1]).toMatch(/next/i)
+    expect(insertCalls[2][1][0]).toBe(12)
+    expect(insertCalls[2][1][1]).toMatch(/almost next/i)
+  })
+
+  test('continues normally when addNotif INSERT throws (lines 61-62)', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in', expected: 10 }]])
+      .mockResolvedValueOnce([[{ queue_id: 1, service_id: 1, status: 'open' }]])
+      .mockResolvedValueOnce([[
+        { entry_id: 1, user_id: 10, user_name: 'Alice', priority: 'high',
+          joinedAt: new Date(Date.now() - 30000).toISOString() },
+      ]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])                    // UPDATE served
+      .mockRejectedValueOnce(new Error('notification insert failed'))  // addNotif throws
+      .mockResolvedValueOnce([[]])                                      // notifyAdmins: no admins
+
+    const res = await request(app).post('/api/admin/queues/1/serve').set(ADMIN_HEADER)
+    expect(res.status).toBe(200)                                       // error in addNotif must not bubble
+  })
+
+  test('returns 500 on unexpected database error (line 187)', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'))
+    const res = await request(app).post('/api/admin/queues/1/serve').set(ADMIN_HEADER)
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/failed to serve/i)
+  })
+})
+
+describe('POST /api/admin/queues/:serviceId/walkin — 500 error (line 235)', () => {
+  test('returns 500 on database error', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'))
+    const res = await request(app)
+      .post('/api/admin/queues/1/walkin')
+      .set(ADMIN_HEADER)
+      .send({ name: 'Walk-in Bob' })
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/failed to add walk-in/i)
+  })
+})
+
+describe('DELETE /api/admin/queues/:serviceId/remove/:entryId — notifyAdmins & 500 error', () => {
+  test('calls notifyAdmins when an entry is successfully cancelled (line 255)', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in' }]])  // SELECT service
+      .mockResolvedValueOnce([[{ user_name: 'Alice' }]])               // SELECT user_name
+      .mockResolvedValueOnce([{ affectedRows: 1 }])                    // UPDATE cancel
+      .mockResolvedValueOnce([[]])                                      // notifyAdmins: no admins
+
+    const res = await request(app)
+      .delete('/api/admin/queues/1/remove/1')
+      .set(ADMIN_HEADER)
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+
+    // The SELECT admins query must have been called (notifyAdmins ran)
+    const adminSelectCall = db.query.mock.calls.find(([sql]) =>
+      /SELECT.*user_id.*WHERE role = 'admin'/.test(sql)
+    )
+    expect(adminSelectCall).toBeDefined()
+  })
+
+  test('returns 500 on database error (line 259)', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'))
+    const res = await request(app)
+      .delete('/api/admin/queues/1/remove/1')
+      .set(ADMIN_HEADER)
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/failed to remove/i)
+  })
+})
+
+describe('PUT /api/admin/queues/:serviceId/boost/:entryId — 500 error (line 291)', () => {
+  test('returns 500 on database error', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'))
+    const res = await request(app)
+      .put('/api/admin/queues/1/boost/1')
+      .set(ADMIN_HEADER)
+      .send({ amount: 1 })
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/failed to reorder/i)
+  })
+})
+
+describe('PUT /api/admin/queues/:serviceId/movetotop/:entryId — 500 error (line 321)', () => {
+  test('returns 500 on database error', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'))
+    const res = await request(app)
+      .put('/api/admin/queues/1/movetotop/1')
+      .set(ADMIN_HEADER)
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/failed to move/i)
+  })
+})
+
+describe('PUT /api/admin/queues/:serviceId/priority/:entryId — 500 error (line 342)', () => {
+  test('returns 500 on database error', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'))
+    const res = await request(app)
+      .put('/api/admin/queues/1/priority/1')
+      .set(ADMIN_HEADER)
+      .send({ priority: 'high' })
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/failed to change priority/i)
+  })
+})
+
 // ===== PUT /api/admin/queues/:serviceId/movetotop/:entryId =====
 
 describe('PUT /api/admin/queues/:serviceId/movetotop/:entryId', () => {

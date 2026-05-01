@@ -209,4 +209,95 @@ describe('Auth Routes', () => {
       expect(res.body.message).toBe('Invalid email or password')
     })
   })
+
+  // -------------------------------------------------------------------------
+  // Additional coverage for uncovered validation branches and error paths
+  // -------------------------------------------------------------------------
+
+  describe('POST /api/auth/register — input validation edge cases', () => {
+    test('returns 400 when a field is a non-string type (line 24)', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ name: 123, email: 'a@b.com', password: 'pass1' })
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Invalid input types')
+    })
+
+    test('returns 400 when phone is provided but is not a string (line 24)', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ name: 'Quinn', email: 'a@b.com', password: 'pass1', phone: 8001234567 })
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Invalid input types')
+    })
+
+    test('returns 400 when name is shorter than 2 characters (line 39)', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ name: 'A', email: 'a@b.com', password: 'pass1' })
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Name must be between 2 and 50 characters')
+    })
+
+    test('returns 400 when name exceeds 50 characters (line 39)', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ name: 'A'.repeat(51), email: 'a@b.com', password: 'pass1' })
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Name must be between 2 and 50 characters')
+    })
+
+    test('returns 400 when email exceeds 100 characters (line 46)', async () => {
+      const longEmail = 'a'.repeat(95) + '@b.com'   // 101 chars
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ name: 'Quinn', email: longEmail, password: 'pass1' })
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Email must not exceed 100 characters')
+    })
+
+    test('returns 400 when password is shorter than 4 characters (line 60)', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ name: 'Quinn', email: 'a@b.com', password: 'abc' })
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Password must be between 4 and 50 characters')
+    })
+
+    test('returns 400 when password exceeds 50 characters (line 60)', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ name: 'Quinn', email: 'a@b.com', password: 'p'.repeat(51) })
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Password must be between 4 and 50 characters')
+    })
+
+    test('returns 500 when a DB query throws during registration (lines 105-106)', async () => {
+      pool.execute.mockRejectedValueOnce(new Error('DB crash'))
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ name: 'Quinn', email: 'a@b.com', password: 'pass1' })
+      expect(res.statusCode).toBe(500)
+      expect(res.body.message).toBe('Server error during registration')
+    })
+  })
+
+  describe('POST /api/auth/login — input validation edge cases', () => {
+    test('returns 400 when email or password is a non-string type (line 126)', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'a@b.com', password: 12345 })
+      expect(res.statusCode).toBe(400)
+      expect(res.body.message).toBe('Invalid input types')
+    })
+
+    test('returns 500 when a DB query throws during login (lines 179-180)', async () => {
+      pool.execute.mockRejectedValueOnce(new Error('DB crash'))
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'a@b.com', password: 'pass1' })
+      expect(res.statusCode).toBe(500)
+      expect(res.body.message).toBe('Server error during login')
+    })
+  })
 })

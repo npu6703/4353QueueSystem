@@ -487,3 +487,268 @@ describe('POST /api/chat — upstream errors', () => {
     expect(res.body).toHaveProperty('reply')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Additional coverage: branches not reached by the tests above
+// ---------------------------------------------------------------------------
+
+// Helper: context where the user IS in a queue (sets userCtx.active, triggers B4).
+function mockContextUserInQueue() {
+  db.query
+    .mockResolvedValueOnce([[{ user_id: 5 }]])
+    .mockResolvedValueOnce([[{ id: 1, name: 'Dine-in', description: 'd', expected: 30, open: 1 }]])
+    .mockResolvedValueOnce([[{ full_name: 'Test', phone: '', email: 't@test.com' }]])
+    .mockResolvedValueOnce([[{ queue_id: 1 }]])
+    .mockResolvedValueOnce([[
+      { entry_id: 27, priority: 'medium', join_time: new Date().toISOString(),
+        queue_id: 1, serviceName: 'Dine-in', expected: 30 },
+    ]])
+    .mockResolvedValueOnce([[{ cnt: 1 }]])
+    .mockResolvedValueOnce([[]])                                     // history: empty
+    .mockResolvedValueOnce([[                                        // B4: all-waiting
+      { entry_id: 27, priority: 'medium', join_time: new Date().toISOString() },
+    ]])
+}
+
+describe('POST /api/chat — auth DB error (lines 171-172)', () => {
+  test('returns 500 when the auth DB query throws', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB crash'))
+    const res = await request(app).post('/api/chat').set(AUTH).send({ message: 'Hi' })
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/auth check failed/i)
+  })
+})
+
+describe('POST /api/chat — intent detection: join with no service named (lines 426, 532-536)', () => {
+  test('returns nudge listing open services when join verb names no specific service', async () => {
+    mockQueueContext()  // Dine-in is open
+    const res = await request(app)
+      .post('/api/chat')
+      .set(AUTH)
+      .send({ message: 'add me to the queue' })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/which one\?|open services.*Dine-in/i)
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  test('replies "no open services" when all services are closed', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ user_id: 5 }]])
+      .mockResolvedValueOnce([[{ id: 1, name: 'Dine-in', description: 'd', expected: 10, open: 0 }]])
+      .mockResolvedValueOnce([[{ full_name: 'Test', phone: '', email: 't@test.com' }]])
+      .mockResolvedValueOnce([[{ queue_id: 1 }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ cnt: 0 }]])
+      .mockResolvedValueOnce([[]])
+
+    const res = await request(app).post('/api/chat').set(AUTH).send({ message: 'add me' })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/no open services/i)
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/chat — join action error handling (lines 78, 84-85)', () => {
+  // "add me to Dine-in" triggers intent detection → executeJoinAction (no LLM involved)
+  test('succeeds even when the join notification INSERT throws (line 78)', async () => {
+    mockQueueContext()
+    db.query
+      .mockResolvedValueOnce([[]])                                      // active check: not in queue
+      .mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in', priority: 'medium', is_open: 1 }]])
+      .mockResolvedValueOnce([[{ queue_id: 1 }]])
+      .mockResolvedValueOnce([[{ full_name: 'Test User' }]])
+      .mockResolvedValueOnce([[{ maxPos: 2 }]])
+      .mockResolvedValueOnce([{ insertId: 100 }])
+      .mockRejectedValueOnce(new Error('notification DB error'))       // INSERT notification throws
+      .mockResolvedValueOnce([[]])                                      // notifyAdmins: no admins
+
+    const res = await request(app)
+      .post('/api/chat')
+      .set(AUTH)
+      .send({ message: 'add me to Dine-in' })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/position/i)
+  })
+
+  test('returns failure message when a DB query inside executeJoinAction throws (lines 84-85)', async () => {
+    mockQueueContext()
+    db.query
+      .mockResolvedValueOnce([[]])                                      // active check
+      .mockRejectedValueOnce(new Error('service lookup failed'))        // SELECT service throws
+
+    const res = await request(app)
+      .post('/api/chat')
+      .set(AUTH)
+      .send({ message: 'add me to Dine-in' })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/something went wrong|couldn't join/i)
+  })
+})
+
+describe('POST /api/chat — leave action error handling (lines 102, 122, 128-129)', () => {
+  test('returns failure reason when entry is gone before the leave runs (race, line 102)', async () => {
+    mockContextUserInQueue()
+    db.query.mockResolvedValueOnce([[]])                               // executeLeaveAction finds nothing
+
+    const res = await request(app)
+      .post('/api/chat')
+      .set(AUTH)
+      .send({ message: 'leave the queue' })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/not currently in any queue|couldn't leave/i)
+  })
+
+  test('succeeds even when the leave notification INSERT throws (line 122)', async () => {
+    mockContextUserInQueue()
+    db.query
+      .mockResolvedValueOnce([[
+        { entry_id: 27, position: 1, queue_id: 1, user_name: 'Test',
+          service_id: 1, serviceName: 'Dine-in' },
+      ]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])                    // UPDATE cancel
+      .mockResolvedValueOnce([{ affectedRows: 0 }])                    // UPDATE reorder
+      .mockRejectedValueOnce(new Error('notification DB error'))       // INSERT notification throws
+      .mockResolvedValueOnce([[]])                                      // notifyAdmins: no admins
+
+    const res = await request(app)
+      .post('/api/chat')
+      .set(AUTH)
+      .send({ message: 'leave the queue' })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/removed.*Dine-in|Dine-in/i)
+  })
+
+  test('returns failure message when the leave SELECT itself throws (lines 128-129)', async () => {
+    mockContextUserInQueue()
+    db.query.mockRejectedValueOnce(new Error('DB down'))               // executeLeaveAction SELECT throws
+
+    const res = await request(app)
+      .post('/api/chat')
+      .set(AUTH)
+      .send({ message: 'leave the queue' })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/something went wrong|couldn't leave/i)
+  })
+})
+
+describe('POST /api/chat — LLM path: history, shortestWait, focusedService (lines 233, 324, 541, 567)', () => {
+  // Two open services so openServices.reduce fires (line 541).
+  // User has history so history.map runs (lines 324, 567).
+  // Query order with 2 services (no active entry):
+  //   0:auth  1:A1 services(2)  2:B1 profile  3:A2_svc1  4:A2_svc2
+  //   5:B2 active  6:A3_svc1 cnt  7:A3_svc2 cnt  8:B3 history
+  test('builds system prompt with history block and identifies shortest-wait service', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ user_id: 5 }]])
+      .mockResolvedValueOnce([[
+        { id: 1, name: 'Dine-in',  description: 'd', expected: 10, open: 1 },
+        { id: 2, name: 'Takeaway', description: 't', expected: 5,  open: 1 },
+      ]])
+      .mockResolvedValueOnce([[{ full_name: 'Test User', phone: '', email: 't@test.com' }]])
+      .mockResolvedValueOnce([[{ queue_id: 1 }]])
+      .mockResolvedValueOnce([[{ queue_id: 2 }]])
+      .mockResolvedValueOnce([[]])                                      // active: none
+      .mockResolvedValueOnce([[{ cnt: 5 }]])                           // Dine-in count
+      .mockResolvedValueOnce([[{ cnt: 2 }]])                           // Takeaway count
+      .mockResolvedValueOnce([[                                        // history: one past visit
+        { serviceName: 'Dine-in', status: 'served', join_time: '2026-04-01T10:00:00.000Z' },
+      ]])
+
+    const res = await request(app)
+      .post('/api/chat')
+      .set(AUTH)
+      .send({ message: 'tell me about the queues', serviceId: 1 })    // serviceId covers line 233
+
+    expect(res.status).toBe(200)
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+
+    const prompt = JSON.parse(global.fetch.mock.calls[0][1].body).messages[0].content
+    // Lines 324 + 567: history block contains the past visit
+    expect(prompt).toMatch(/Dine-in.*served|served.*Dine-in/i)
+    // Line 541: shortestWait reduce — Takeaway (2×5=10) beats Dine-in (5×10=50)
+    expect(prompt).toMatch(/Takeaway/i)
+  })
+})
+
+describe('POST /api/chat — maybeExecuteAction token paths (lines 458-479)', () => {
+  // Neutral message that bypasses every intent-detection pattern so the LLM
+  // reply is what drives the action, not the message itself.
+  const NEUTRAL = 'tell me about services'
+
+  test('leave token: uses fallback reply when stripped text is empty (line 465)', async () => {
+    mockContextUserInQueue()
+    db.query
+      .mockResolvedValueOnce([[
+        { entry_id: 27, position: 1, queue_id: 1, user_name: 'Test',
+          service_id: 1, serviceName: 'Dine-in' },
+      ]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 0 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])                    // INSERT notification
+      .mockResolvedValueOnce([[]])                                      // notifyAdmins: no admins
+
+    mockLlmReply('<<ACTION:LEAVE_QUEUE>>')                             // stripped result is empty
+
+    const res = await request(app).post('/api/chat').set(AUTH).send({ message: NEUTRAL })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/removed.*Dine-in|Dine-in.*queue/i)
+    expect(res.body.reply).not.toMatch(/<<ACTION/i)
+  })
+
+  test('leave token: returns reason when leave action finds no entry (lines 102, 467)', async () => {
+    mockContextUserInQueue()
+    db.query.mockResolvedValueOnce([[]])                               // entry gone (race condition)
+
+    mockLlmReply('<<ACTION:LEAVE_QUEUE>> Done.')
+
+    const res = await request(app).post('/api/chat').set(AUTH).send({ message: NEUTRAL })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/not currently in any queue/i)
+    expect(res.body.reply).not.toMatch(/<<ACTION/i)
+  })
+
+  test('join token: uses fallback reply when stripped text is empty and join succeeds (line 477)', async () => {
+    mockQueueContext()
+    db.query
+      .mockResolvedValueOnce([[]])                                      // active check
+      .mockResolvedValueOnce([[{ service_id: 1, name: 'Dine-in', priority: 'medium', is_open: 1 }]])
+      .mockResolvedValueOnce([[{ queue_id: 1 }]])
+      .mockResolvedValueOnce([[{ full_name: 'Test User' }]])
+      .mockResolvedValueOnce([[{ maxPos: 0 }]])
+      .mockResolvedValueOnce([{ insertId: 88 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])                    // INSERT notification
+      .mockResolvedValueOnce([[]])                                      // notifyAdmins: no admins
+
+    mockLlmReply('<<ACTION:JOIN_QUEUE:1>>')                            // stripped result is empty
+
+    const res = await request(app).post('/api/chat').set(AUTH).send({ message: NEUTRAL })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/Dine-in.*queue|queue.*Dine-in/i)
+    expect(res.body.reply).not.toMatch(/<<ACTION/i)
+  })
+
+  test('join token: returns reason when serviceId is invalid (lines 19, 479)', async () => {
+    mockQueueContext()
+    mockLlmReply('<<ACTION:JOIN_QUEUE:0>>')                            // 0 fails the positive-int check
+
+    const res = await request(app).post('/api/chat').set(AUTH).send({ message: NEUTRAL })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/couldn't tell which service|couldn't join/i)
+    expect(res.body.reply).not.toMatch(/<<ACTION/i)
+  })
+
+  test('leave token: returns not-in-queue message when user has no active entry (line 460)', async () => {
+    mockQueueContext()                                                  // user NOT in queue
+    mockLlmReply('<<ACTION:LEAVE_QUEUE>> Removing you now.')
+
+    const res = await request(app).post('/api/chat').set(AUTH).send({ message: NEUTRAL })
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toMatch(/not currently in any queue/i)
+    expect(res.body.reply).not.toMatch(/<<ACTION/i)
+    // No cancel UPDATE should fire since the user was never in a queue
+    const cancelCall = db.query.mock.calls.find(
+      (c) => /UPDATE QueueEntry SET status = 'cancelled'/.test(c[0])
+    )
+    expect(cancelCall).toBeUndefined()
+  })
+})
