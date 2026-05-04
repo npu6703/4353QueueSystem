@@ -75,7 +75,7 @@ export default function Register() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.message || 'Registration failed. Please try again.')
-      nav('/login')
+      nav('/login', { state: { success: 'Account created! You can log in now.' } })
     } catch (e) {
       setErr(e.message || 'Registration failed. Please try again.')
     }

@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { validateEmail, validatePassword } from '../utils/validation'
 import { API_BASE } from '../config'
 import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function Login() {
   const nav = useNavigate()
+  const location = useLocation()
+  const successMsg = location.state?.success
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -141,6 +143,7 @@ export default function Login() {
             )}
           </div>
 
+          {successMsg && <div className="success-text">{successMsg}</div>}
           {err && <div className="error-text">{err}</div>}
 
           <button className="primary" type="submit" disabled={!canSubmit}>

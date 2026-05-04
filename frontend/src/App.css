@@ -248,6 +248,17 @@ form {
   margin-top: 5px;
 }
 
+.success-text {
+  color: #16a34a;
+  font-size: 13px;
+  margin-top: 5px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  font-weight: 500;
+}
+
 /* Button */
 button.primary {
   width: 100%;

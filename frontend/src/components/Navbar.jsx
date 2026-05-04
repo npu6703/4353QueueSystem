@@ -13,6 +13,7 @@ export default function Navbar() {
   const [toast, setToast] = useState(null)
   const dropdownRef = useRef(null)
   const prevIdsRef = useRef(new Set())
+  const initializedRef = useRef(false)
 
   const fetchNotifs = useCallback(async () => {
     if (!user?.id) {
@@ -24,17 +25,20 @@ export default function Navbar() {
       const arr = Array.isArray(list) ? list : []
 
       if (!user.isAdmin) {
-        const newServed = arr.find(n => {
-          const id = n.notification_id ?? n.id
-          const isNew = !prevIdsRef.current.has(id)
-          const isUnread = n.status !== 'viewed' && !n.read
-          return isNew && isUnread && n.message?.toLowerCase().includes('served')
-        })
-        if (newServed) {
-          setToast(newServed.message)
-          setTimeout(() => setToast(null), 7000)
+        if (initializedRef.current) {
+          const newServed = arr.find(n => {
+            const id = n.notification_id ?? n.id
+            const isNew = !prevIdsRef.current.has(id)
+            const isUnread = n.status !== 'viewed' && !n.read
+            return isNew && isUnread && n.message?.toLowerCase().includes('served')
+          })
+          if (newServed) {
+            setToast(newServed.message)
+            setTimeout(() => setToast(null), 7000)
+          }
         }
         prevIdsRef.current = new Set(arr.map(n => n.notification_id ?? n.id))
+        initializedRef.current = true
       }
 
       setNotifs(arr)

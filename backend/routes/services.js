@@ -44,9 +44,16 @@ function validateServiceFields(body, requireAll) {
 // GET /api/services — list all services (public)
 router.get('/api/services', async (_req, res) => {
   try {
-    const [rows] = await db.query(
-  'SELECT service_id AS id, name, description, expected_duration AS expected, priority, is_open AS `open` FROM Service')
-    return res.status(200).json(rows)
+    const [rows] = await db.query(`
+      SELECT s.service_id AS id, s.name, s.description,
+             s.expected_duration AS expected, s.priority, s.is_open AS \`open\`,
+             COUNT(qe.entry_id) AS queueCount
+      FROM Service s
+      LEFT JOIN Queue q ON q.service_id = s.service_id
+      LEFT JOIN QueueEntry qe ON qe.queue_id = q.queue_id AND qe.status = 'waiting'
+      GROUP BY s.service_id`)
+    const parsed = rows.map(r => ({ ...r, queueCount: Number(r.queueCount) }))
+    return res.status(200).json(parsed)
   } catch (err) {
     return res.status(500).json({ error: 'Failed to fetch services' })
   }
