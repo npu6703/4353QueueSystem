@@ -50,7 +50,7 @@ export default function Navbar() {
   // requiring a page navigation.
   useEffect(() => {
     if (!user?.id) return
-    const interval = setInterval(fetchNotifs, 5000)
+    const interval = setInterval(fetchNotifs, 3000)
     return () => clearInterval(interval)
   }, [fetchNotifs, user?.id])
 
