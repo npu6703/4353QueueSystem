@@ -10,7 +10,9 @@ export default function Navbar() {
   const location = useLocation()
   const [showNotifs, setShowNotifs] = useState(false)
   const [notifs, setNotifs] = useState([])
+  const [toast, setToast] = useState(null)
   const dropdownRef = useRef(null)
+  const prevIdsRef = useRef(new Set())
 
   const fetchNotifs = useCallback(async () => {
     if (!user?.id) {
@@ -19,7 +21,23 @@ export default function Navbar() {
     }
     try {
       const list = user.isAdmin ? await getAdminNotifs(user.id) : await getUserNotifs(user.id)
-      setNotifs(Array.isArray(list) ? list : [])
+      const arr = Array.isArray(list) ? list : []
+
+      if (!user.isAdmin) {
+        const newServed = arr.find(n => {
+          const id = n.notification_id ?? n.id
+          const isNew = !prevIdsRef.current.has(id)
+          const isUnread = n.status !== 'viewed' && !n.read
+          return isNew && isUnread && n.message?.toLowerCase().includes('served')
+        })
+        if (newServed) {
+          setToast(newServed.message)
+          setTimeout(() => setToast(null), 7000)
+        }
+        prevIdsRef.current = new Set(arr.map(n => n.notification_id ?? n.id))
+      }
+
+      setNotifs(arr)
     } catch (err) {
       console.error('Failed to load notifications:', err)
       setNotifs([])
@@ -80,6 +98,7 @@ export default function Navbar() {
   }
 
   return (
+    <>
     <nav className="nav">
       <Link to={user ? (user.isAdmin ? '/admin' : '/') : '/login'} className="brand">QueueSmart</Link>
       <div className="nav-right">
@@ -154,5 +173,21 @@ export default function Navbar() {
         )}
       </div>
     </nav>
+
+    {toast && (
+      <div className="served-toast">
+        <div className="served-toast-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <div className="served-toast-body">
+          <strong>It's your turn!</strong>
+          <span>{toast}</span>
+        </div>
+        <button className="served-toast-close" onClick={() => setToast(null)}>✕</button>
+      </div>
+    )}
+    </>
   )
 }
