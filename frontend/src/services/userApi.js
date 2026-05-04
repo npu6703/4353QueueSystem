@@ -46,3 +46,9 @@ export async function markNotificationsRead(userId) {
     body: JSON.stringify({ userId }),
   })
 }
+
+export async function clearNotifications(userId) {
+  return request(`/api/notifications?userId=${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  })
+}

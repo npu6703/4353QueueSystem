@@ -75,4 +75,23 @@ router.put('/api/notifications/read', async (req, res) => {
   }
 });
 
+// DELETE /api/notifications?userId=... — clear all notifications for a user
+router.delete('/api/notifications', async (req, res) => {
+  try {
+    const rawId = req.query.userId ?? req.body?.userId
+    const userId = Number(rawId)
+    if (!rawId || !Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ error: 'userId is required' })
+    }
+    const [result] = await db.query(
+      'DELETE FROM Notification WHERE user_id = ?',
+      [userId]
+    )
+    return res.status(200).json({ success: true, deleted: result.affectedRows ?? 0 })
+  } catch (err) {
+    console.error('clear notifications error:', err)
+    return res.status(500).json({ error: 'Failed to clear notifications' })
+  }
+});
+
 module.exports = router;

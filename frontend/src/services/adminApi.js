@@ -139,6 +139,14 @@ export async function markNotificationsRead(userId) {
   })
 }
 
+export async function clearNotifications(userId) {
+  const id = userId || currentUserId()
+  return request(`/api/notifications?userId=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: adminHeaders(false),
+  })
+}
+
 // ===== Reports =====
 
 function buildQuery(params) {

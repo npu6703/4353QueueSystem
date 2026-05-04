@@ -156,3 +156,44 @@ describe('PUT /api/notifications/read', () => {
     expect(res.status).toBe(500)
   })
 })
+
+// ===== DELETE /api/notifications =====
+
+describe('DELETE /api/notifications', () => {
+  test('clears all notifications for a user', async () => {
+    db.query.mockResolvedValueOnce([{ affectedRows: 3 }])
+
+    const res = await request(app).delete('/api/notifications?userId=1')
+
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+    expect(res.body.deleted).toBe(3)
+  })
+
+  test('works when user has no notifications', async () => {
+    db.query.mockResolvedValueOnce([{ affectedRows: 0 }])
+
+    const res = await request(app).delete('/api/notifications?userId=1')
+
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+    expect(res.body.deleted).toBe(0)
+  })
+
+  test('rejects requests without userId', async () => {
+    const res = await request(app).delete('/api/notifications')
+    expect(res.status).toBe(400)
+  })
+
+  test('rejects invalid userId', async () => {
+    const res = await request(app).delete('/api/notifications?userId=abc')
+    expect(res.status).toBe(400)
+  })
+
+  test('returns 500 on database error', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'))
+
+    const res = await request(app).delete('/api/notifications?userId=1')
+    expect(res.status).toBe(500)
+  })
+})

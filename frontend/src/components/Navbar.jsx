@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getCurrentUser, logout } from '../services/localApi'
-import { getNotifications as getUserNotifs, markNotificationsRead as markUserRead } from '../services/userApi'
-import { getNotifications as getAdminNotifs, markNotificationsRead as markAdminRead } from '../services/adminApi'
+import { getNotifications as getUserNotifs, markNotificationsRead as markUserRead, clearNotifications as clearUserNotifs } from '../services/userApi'
+import { getNotifications as getAdminNotifs, markNotificationsRead as markAdminRead, clearNotifications as clearAdminNotifs } from '../services/adminApi'
 
 export default function Navbar() {
   const user = getCurrentUser()
@@ -90,6 +90,21 @@ export default function Navbar() {
     if (opening && unreadCount > 0) handleMarkRead()
   }
 
+  async function handleClearAll() {
+    if (!user?.id || notifs.length === 0) return
+    // Track current ids as "seen" so the next poll doesn't re-trigger the toast
+    // for notifications that existed before the clear.
+    prevIdsRef.current = new Set(notifs.map(n => n.notification_id ?? n.id))
+    setNotifs([])
+    try {
+      if (user.isAdmin) await clearAdminNotifs(user.id)
+      else await clearUserNotifs(user.id)
+    } catch (err) {
+      console.error('Failed to clear notifications:', err)
+      await fetchNotifs()
+    }
+  }
+
   const unreadCount = notifs.filter(n => n.status !== 'viewed' && !n.read).length
 
   function isActive(path) {
@@ -139,6 +154,9 @@ export default function Navbar() {
                   <div className="notif-dropdown">
                     <div className="notif-dropdown-header">
                       <span>Notifications</span>
+                      {notifs.length > 0 && (
+                        <button className="notif-mark-btn" onClick={handleClearAll}>Clear all</button>
+                      )}
                     </div>
                     {notifs.length === 0 ? (
                       <div className="notif-empty">No notifications</div>
